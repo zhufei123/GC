@@ -40,6 +40,14 @@
               距您 {{ formatDistance(store.distanceKm) }}
             </view>
           </view>
+          <view class="head__fav" :class="{ 'head__fav--on': favorited }" @tap.stop="toggleFavorite">
+            <wd-icon
+              :name="favorited ? 'heart-filled' : 'heart'"
+              size="40rpx"
+              :color="favorited ? '#ff4d4f' : '#c0c4cc'"
+            />
+            <text class="head__fav-text">{{ favorited ? "已收藏" : "收藏" }}</text>
+          </view>
         </view>
 
         <view class="head__row">
@@ -101,16 +109,29 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
-import { getStoreDetail, getStorePrices, getCachedStore, resolveUserLocation } from "@/api/store";
+import {
+  getStoreDetail,
+  getStorePrices,
+  getCachedStore,
+  resolveUserLocation,
+  isStationFavorite,
+  favoriteStation,
+  unfavoriteStation,
+} from "@/api/store";
 import type { StoreItem, StorePriceItem } from "@/api/store";
 import { getSkuList } from "@/api/goods";
 import { openNavigation } from "@/utils/map-nav";
+import { useUserStore } from "@/store/user";
 
+const userStore = useUserStore();
 const store = ref<StoreItem | null>(null);
 const prices = ref<StorePriceItem[]>([]);
 const priceIsGuide = ref(false);
 const loading = ref(true);
 const priceLoading = ref(true);
+const favorited = ref(false);
+let favoritePending = false;
+let storeId = "";
 
 const canNavigate = computed(() => {
   const lat = Number(store.value?.latitude);
@@ -181,6 +202,40 @@ async function loadPrices(id: string) {
   }
 }
 
+/** 未登录不查收藏态，避免触发 40100 被踢去登录页 */
+async function loadFavorite(id: string) {
+  if (!userStore.isLogin) return;
+  try {
+    favorited.value = (await isStationFavorite(id)) === true;
+  } catch (e) {
+    /* 收藏态查询失败保持默认 */
+  }
+}
+
+async function toggleFavorite() {
+  if (!storeId || favoritePending) return;
+  if (!userStore.isLogin) {
+    uni.showToast({ title: "请先登录", icon: "none" });
+    return;
+  }
+  favoritePending = true;
+  const next = !favorited.value;
+  favorited.value = next;
+  try {
+    if (next) {
+      await favoriteStation(storeId);
+      uni.showToast({ title: "已收藏", icon: "none" });
+    } else {
+      await unfavoriteStation(storeId);
+      uni.showToast({ title: "已取消收藏", icon: "none" });
+    }
+  } catch (e) {
+    favorited.value = !next;
+  } finally {
+    favoritePending = false;
+  }
+}
+
 function callStore() {
   const phone = store.value?.phone;
   if (!phone) return;
@@ -214,8 +269,10 @@ onLoad((options) => {
     priceLoading.value = false;
     return;
   }
+  storeId = id;
   loadStore(id);
   loadPrices(id);
+  loadFavorite(id);
 });
 </script>
 
@@ -310,6 +367,24 @@ onLoad((options) => {
     margin-top: 8rpx;
     font-size: 24rpx;
     color: $theme-color;
+  }
+
+  &__fav {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4rpx;
+    padding: 8rpx 12rpx;
+  }
+
+  &__fav-text {
+    font-size: 20rpx;
+    color: #86909c;
+  }
+
+  &__fav--on .head__fav-text {
+    color: #ff4d4f;
   }
 
   &__row {

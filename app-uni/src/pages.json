@@ -14,7 +14,8 @@
         { "path": "address/edit", "style": { "navigationBarTitleText": "编辑地址" } },
         { "path": "store/nearby", "style": { "navigationBarTitleText": "附近回收站" } },
         { "path": "store/detail", "style": { "navigationBarTitleText": "回收站详情" } },
-        { "path": "store/quotes", "style": { "navigationBarTitleText": "门店比价" } }
+        { "path": "store/quotes", "style": { "navigationBarTitleText": "门店比价" } },
+        { "path": "store/favorites", "style": { "navigationBarTitleText": "我的收藏" } }
       ]
     },
     {

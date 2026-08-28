@@ -1,4 +1,4 @@
-import { get } from "@/utils/request";
+import { get, post, del } from "@/utils/request";
 import { getAddressList } from "@/api/address";
 
 /** 深圳南山演示坐标(经度, 纬度) */
@@ -107,6 +107,39 @@ export async function getSkuQuotes(
     storeName: q.storeName ?? q.stationName,
     priceUpdatedAt: q.priceUpdatedAt ?? q.updatedAt,
   }));
+}
+
+/* ---------- 收藏回收站 ---------- */
+
+export interface FavoriteStationItem {
+  id: string;
+  name?: string;
+  address?: string;
+  phone?: string;
+  businessHours?: string;
+  businessStatus?: number;
+  longitude?: number;
+  latitude?: number;
+  photos?: string[];
+  /** false 表示门店已下线/停用 */
+  available?: boolean;
+  favoritedAt?: string;
+}
+
+export function isStationFavorite(id: string) {
+  return get<boolean>(`/app-api/user/favorite/station/${id}`, undefined, { silent: true });
+}
+
+export function favoriteStation(id: string) {
+  return post<void>(`/app-api/user/favorite/station/${id}`);
+}
+
+export function unfavoriteStation(id: string) {
+  return del<void>(`/app-api/user/favorite/station/${id}`);
+}
+
+export function getFavoriteStations() {
+  return get<FavoriteStationItem[]>("/app-api/user/favorite/stations", undefined, { silent: true });
 }
 
 /* ---------- nearby 结果缓存：detail 页在 /app-api/store/{id} 未就绪时兜底 ---------- */
