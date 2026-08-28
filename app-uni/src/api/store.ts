@@ -159,12 +159,10 @@ function getDeviceLocation(
 }
 
 /**
- * 解析用户坐标：设备定位 -> 默认地址 -> 第一个地址 -> 南山演示坐标。
- * 任一环节失败均静默降级，页面不因此中断。
+ * 解析用户坐标：默认地址 -> 设备定位(中国境内才采用) -> 南山演示坐标。
+ * 上门回收按收货地址算距离更准；云端/海外浏览器 GPS 会把附近站滤空。
  */
 export async function resolveUserLocation(): Promise<{ longitude: number; latitude: number }> {
-  const device = await getDeviceLocation();
-  if (device) return device;
   try {
     const list = (await getAddressList()) || [];
     const preferred =
@@ -175,7 +173,15 @@ export async function resolveUserLocation(): Promise<{ longitude: number; latitu
       return { longitude: lng, latitude: lat };
     }
   } catch (e) {
-    /* 地址不可用时使用兜底坐标 */
+    /* 地址不可用时继续尝试定位 */
+  }
+  const device = await getDeviceLocation();
+  if (device && inChina(device.longitude, device.latitude)) {
+    return device;
   }
   return { ...FALLBACK_LOCATION };
+}
+
+function inChina(lng: number, lat: number): boolean {
+  return lng >= 73 && lng <= 135 && lat >= 18 && lat <= 54;
 }
