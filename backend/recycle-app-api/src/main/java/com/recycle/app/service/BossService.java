@@ -294,6 +294,7 @@ public class BossService {
                 vo.setStationPrice(quote.getPrice());
                 vo.setStatus(quote.getStatus());
                 vo.setRemark(quote.getRemark());
+                vo.setUpdatedAt(quote.getUpdateTime());
             }
             return vo;
         }).toList();

@@ -1,8 +1,10 @@
 package com.recycle.app.vo;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 /**
  * B 端报价管理行：全部上架 SKU + 指导价 + 本店报价
@@ -21,6 +23,9 @@ public class BossPriceVO {
     /** 1报价中 0停报，null 表示未报价 */
     private Integer status;
     private String remark;
+    /** 本店报价最后更新时间，null 表示未报价 */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
+    private LocalDateTime updatedAt;
 
     /** 前端字段别名：price = 本店报价 */
     public BigDecimal getPrice() {

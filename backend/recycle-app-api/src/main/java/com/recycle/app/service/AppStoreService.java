@@ -90,6 +90,7 @@ public class AppStoreService {
                         StoreNearbyVO.PriceBriefVO brief = new StoreNearbyVO.PriceBriefVO();
                         brief.setSkuName(skus.get(q.getSkuId()).getName());
                         brief.setPrice(q.getPrice());
+                        brief.setUpdatedAt(q.getUpdateTime());
                         return brief;
                     }).toList());
                     return vo;
@@ -154,6 +155,7 @@ public class AppStoreService {
                     vo.setPrice(r.getPrice());
                     vo.setStatus(r.getStatus());
                     vo.setGuidePrice(guidePrices.get(sku.getId()));
+                    vo.setUpdatedAt(r.getUpdateTime());
                     return vo;
                 })
                 .toList();
@@ -172,21 +174,23 @@ public class AppStoreService {
         if (quotes.isEmpty()) {
             return List.of();
         }
-        Map<Long, BigDecimal> priceByStation = quotes.stream()
-                .collect(Collectors.toMap(StationSkuPrice::getStationId, StationSkuPrice::getPrice, (a, b) -> a));
+        Map<Long, StationSkuPrice> quoteByStation = quotes.stream()
+                .collect(Collectors.toMap(StationSkuPrice::getStationId, Function.identity(), (a, b) -> a));
         List<RecycleStation> stations = stationMapper.selectList(new LambdaQueryWrapper<RecycleStation>()
-                .in(RecycleStation::getId, priceByStation.keySet())
+                .in(RecycleStation::getId, quoteByStation.keySet())
                 .eq(RecycleStation::getAuditStatus, "approved")
                 .eq(RecycleStation::getStatus, 1));
         return stations.stream()
                 .map(s -> {
+                    StationSkuPrice quote = quoteByStation.get(s.getId());
                     SkuQuoteVO vo = new SkuQuoteVO();
                     vo.setStationId(s.getId());
                     vo.setStationName(s.getName());
                     vo.setAddress(s.getAddress());
                     vo.setLongitude(s.getLongitude());
                     vo.setLatitude(s.getLatitude());
-                    vo.setPrice(priceByStation.get(s.getId()));
+                    vo.setPrice(quote.getPrice());
+                    vo.setUpdatedAt(quote.getUpdateTime());
                     vo.setUnit(sku.getUnit());
                     vo.setDistanceKm(GeoUtils.distanceKm(longitude, latitude, s.getLongitude(), s.getLatitude()));
                     vo.setBusinessHours(s.getBusinessHours());
