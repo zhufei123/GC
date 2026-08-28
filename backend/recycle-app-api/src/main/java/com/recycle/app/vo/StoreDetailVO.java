@@ -27,4 +27,8 @@ public class StoreDetailVO {
     private BigDecimal distanceKm;
     /** 报价中 SKU 数 */
     private Integer quotedCount;
+    /** 平均评分（1 位小数），无评价为 null */
+    private BigDecimal avgRating;
+    /** 评价条数 */
+    private Long reviewCount;
 }

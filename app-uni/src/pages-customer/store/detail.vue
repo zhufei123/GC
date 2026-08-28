@@ -36,8 +36,15 @@
                 休息中
               </wd-tag>
             </view>
-            <view v-if="store.distanceKm != null" class="head__dist">
-              距您 {{ formatDistance(store.distanceKm) }}
+            <view class="head__meta">
+              <view v-if="store.avgRating != null" class="head__rating">
+                <wd-icon name="star-filled" size="26rpx" color="#ff8f1f" />
+                <text class="head__rating-score">{{ store.avgRating }}</text>
+                <text class="head__rating-count">{{ store.reviewCount || 0 }}条评价</text>
+              </view>
+              <view v-if="store.distanceKm != null" class="head__dist">
+                距您 {{ formatDistance(store.distanceKm) }}
+              </view>
             </view>
           </view>
           <view class="head__fav" :class="{ 'head__fav--on': favorited }" @tap.stop="toggleFavorite">
@@ -363,8 +370,31 @@ onLoad((options) => {
     gap: 12rpx;
   }
 
-  &__dist {
+  &__meta {
     margin-top: 8rpx;
+    display: flex;
+    align-items: center;
+    gap: 20rpx;
+  }
+
+  &__rating {
+    display: flex;
+    align-items: center;
+    gap: 6rpx;
+  }
+
+  &__rating-score {
+    font-size: 26rpx;
+    font-weight: 700;
+    color: #ff8f1f;
+  }
+
+  &__rating-count {
+    font-size: 22rpx;
+    color: #86909c;
+  }
+
+  &__dist {
     font-size: 24rpx;
     color: $theme-color;
   }

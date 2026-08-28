@@ -5,7 +5,9 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.recycle.app.dto.OrderCancelDTO;
 import com.recycle.app.dto.OrderCreateDTO;
+import com.recycle.app.dto.OrderReviewDTO;
 import com.recycle.app.support.OrderAssembler;
+import com.recycle.app.vo.OrderReviewVO;
 import com.recycle.app.vo.OrderVO;
 import com.recycle.common.core.BizException;
 import com.recycle.common.core.ErrorCode;
@@ -15,8 +17,10 @@ import com.recycle.common.entity.member.UserAddress;
 import com.recycle.common.entity.recycle.Sku;
 import com.recycle.common.entity.store.RecycleStation;
 import com.recycle.common.entity.trade.OrderItem;
+import com.recycle.common.entity.trade.OrderReview;
 import com.recycle.common.entity.trade.RecycleOrder;
 import com.recycle.common.mapper.OrderItemMapper;
+import com.recycle.common.mapper.OrderReviewMapper;
 import com.recycle.common.mapper.RecycleOrderMapper;
 import com.recycle.common.mapper.RecycleStationMapper;
 import com.recycle.common.mapper.SkuMapper;
@@ -51,6 +55,7 @@ public class AppOrderService {
 
     private final RecycleOrderMapper orderMapper;
     private final OrderItemMapper orderItemMapper;
+    private final OrderReviewMapper orderReviewMapper;
     private final UserAddressMapper addressMapper;
     private final RecycleStationMapper stationMapper;
     private final SkuMapper skuMapper;
@@ -212,6 +217,41 @@ public class AppOrderService {
         if (rows == 0) {
             throw new BizException(ErrorCode.ORDER_STATUS_ILLEGAL);
         }
+    }
+
+    /** 评价：仅 COMPLETED 订单，一单一评（uk_review_order 兜底并发） */
+    public void review(Long userId, Long orderId, OrderReviewDTO dto) {
+        RecycleOrder order = requireOwn(userId, orderId);
+        if (!"COMPLETED".equals(order.getStatus())) {
+            throw new BizException(ErrorCode.ORDER_STATUS_ILLEGAL, "订单完成后才能评价");
+        }
+        OrderReview review = new OrderReview();
+        review.setOrderId(orderId);
+        review.setUserId(userId);
+        review.setStationId(order.getStationId());
+        review.setRating(dto.getRating());
+        review.setComment(StringUtils.hasText(dto.getComment()) ? dto.getComment().trim() : null);
+        try {
+            orderReviewMapper.insert(review);
+        } catch (DuplicateKeyException e) {
+            throw new BizException(ErrorCode.PARAM_ERROR, "该订单已评价");
+        }
+    }
+
+    /** 我的订单评价，未评价返回 null */
+    public OrderReviewVO getReview(Long userId, Long orderId) {
+        requireOwn(userId, orderId);
+        OrderReview review = orderReviewMapper.selectOne(new LambdaQueryWrapper<OrderReview>()
+                .eq(OrderReview::getOrderId, orderId));
+        if (review == null) {
+            return null;
+        }
+        OrderReviewVO vo = new OrderReviewVO();
+        vo.setOrderId(review.getOrderId());
+        vo.setRating(review.getRating());
+        vo.setComment(review.getComment());
+        vo.setCreateTime(review.getCreateTime());
+        return vo;
     }
 
     private RecycleOrder requireOwn(Long userId, Long orderId) {

@@ -12,6 +12,7 @@ import com.recycle.common.entity.recycle.Sku;
 import com.recycle.common.entity.store.RecycleStation;
 import com.recycle.common.entity.store.StationSkuPrice;
 import com.recycle.common.mapper.CategoryMapper;
+import com.recycle.common.mapper.OrderReviewMapper;
 import com.recycle.common.mapper.RecycleStationMapper;
 import com.recycle.common.mapper.SkuMapper;
 import com.recycle.common.mapper.StationSkuPriceMapper;
@@ -24,6 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalTime;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -47,6 +49,7 @@ public class AppStoreService {
     private final SkuMapper skuMapper;
     private final CategoryMapper categoryMapper;
     private final StationSkuPriceMapper stationSkuPriceMapper;
+    private final OrderReviewMapper orderReviewMapper;
     private final StationPriceReader stationPriceReader;
     private final SkuPriceReader skuPriceReader;
 
@@ -123,7 +126,27 @@ public class AppStoreService {
         Map<Long, Sku> quotedSkus = enabledSkus(quoted.stream()
                 .map(StationSkuPrice::getSkuId).distinct().toList());
         vo.setQuotedCount((int) quoted.stream().filter(q -> quotedSkus.containsKey(q.getSkuId())).count());
+        fillReviewStats(vo, s.getId());
         return vo;
+    }
+
+    /** 单条聚合 SQL 填充评分统计，失败不影响详情主流程 */
+    private void fillReviewStats(StoreDetailVO vo, Long stationId) {
+        try {
+            Map<String, Object> stats = orderReviewMapper.statsByStation(stationId);
+            if (stats == null) {
+                return;
+            }
+            Object count = stats.get("reviewCount");
+            Object avg = stats.get("avgRating");
+            long reviewCount = count instanceof Number n ? n.longValue() : 0L;
+            vo.setReviewCount(reviewCount);
+            if (reviewCount > 0 && avg instanceof Number n) {
+                vo.setAvgRating(BigDecimal.valueOf(n.doubleValue()).setScale(1, RoundingMode.HALF_UP));
+            }
+        } catch (Exception e) {
+            // order_review 表未建时静默降级
+        }
     }
 
     /** 门店报价单（含停报行），附平台指导价对比 */

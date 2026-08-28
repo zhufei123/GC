@@ -50,6 +50,10 @@ export interface StoreItem {
   openNow?: boolean;
   /** 报价 TOP3(按价格降序) */
   prices?: PriceBrief[];
+  /** 平均评分(1 位小数)，无评价为 null */
+  avgRating?: string | number | null;
+  /** 评价条数 */
+  reviewCount?: number;
 }
 
 export interface SkuQuoteItem {
