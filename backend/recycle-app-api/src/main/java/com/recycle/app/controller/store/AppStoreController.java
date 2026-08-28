@@ -28,8 +28,10 @@ public class AppStoreController {
     @Operation(summary = "附近门店（含亮点价/报价数/TOP3报价）")
     @GetMapping("/nearby")
     public R<List<StoreNearbyVO>> nearby(@RequestParam(required = false) BigDecimal longitude,
-                                         @RequestParam(required = false) BigDecimal latitude) {
-        return R.ok(storeService.nearby(longitude, latitude));
+                                         @RequestParam(required = false) BigDecimal latitude,
+                                         @RequestParam(required = false) BigDecimal radiusKm,
+                                         @RequestParam(required = false) String sort) {
+        return R.ok(storeService.nearby(longitude, latitude, radiusKm, sort));
     }
 
     @Operation(summary = "门店详情（带经纬度返回距离）")

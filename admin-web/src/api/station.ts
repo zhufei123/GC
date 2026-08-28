@@ -85,3 +85,17 @@ export function updateStore(id: string, data: StoreForm) {
 export function updateStoreStatus(id: string, status: number) {
   return request<void>({ url: `/admin-api/store/${id}/status`, method: 'put', data: { status } })
 }
+
+export interface StorePriceVO {
+  skuId: string
+  skuName?: string
+  unit?: string
+  categoryName?: string
+  price?: string | number
+  status?: number
+  guidePrice?: string | number
+}
+
+export function getStorePrices(id: string) {
+  return request<StorePriceVO[]>({ url: `/admin-api/store/${id}/prices`, method: 'get' })
+}

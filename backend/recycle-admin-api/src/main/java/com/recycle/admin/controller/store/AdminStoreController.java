@@ -4,6 +4,7 @@ import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.recycle.admin.dto.AuditDTO;
 import com.recycle.admin.dto.StatusDTO;
 import com.recycle.admin.service.AdminStoreService;
+import com.recycle.admin.vo.AdminStorePriceVO;
 import com.recycle.common.core.PageQuery;
 import com.recycle.common.core.PageResult;
 import com.recycle.common.core.R;
@@ -23,6 +24,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 @Tag(name = "管理端-门店与入驻审核")
 @RestController
@@ -77,6 +80,13 @@ public class AdminStoreController {
     public R<Void> update(@PathVariable Long id, @RequestBody RecycleStation store) {
         storeService.updateStore(id, store);
         return R.ok();
+    }
+
+    @Operation(summary = "查看门店自主报价（对照指导价）")
+    @SaCheckPermission(type = StpKit.ADMIN_TYPE, value = "store:store:list")
+    @GetMapping("/{id}/prices")
+    public R<List<AdminStorePriceVO>> prices(@PathVariable Long id) {
+        return R.ok(storeService.storePrices(id));
     }
 
     @Operation(summary = "启停门店")

@@ -2,7 +2,7 @@
   <view class="price">
     <view class="price__header">
       <view class="price__title">今日回收价</view>
-      <view class="price__sub">价格实时更新 · 以称重时生效价为准</view>
+      <view class="price__sub">平台指导价 · 点击品类对比附近回收站报价</view>
     </view>
 
     <view class="price__body">
@@ -36,6 +36,7 @@
               <template v-if="sku.price">
                 <text class="sku-card__amount">¥{{ sku.price }}</text>
                 <text class="sku-card__unit">/{{ sku.unit || "kg" }}</text>
+                <view class="sku-card__guide">指导价</view>
               </template>
               <wd-tag v-else plain>暂无报价</wd-tag>
             </view>
@@ -190,6 +191,9 @@ defineExpose({ refresh });
 
   &__price {
     flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
   }
 
   &__amount {
@@ -201,6 +205,13 @@ defineExpose({ refresh });
   &__unit {
     color: #86909c;
     font-size: 22rpx;
+  }
+
+  &__guide {
+    margin-top: 4rpx;
+    font-size: 20rpx;
+    color: #86909c;
+    text-align: right;
   }
 }
 </style>

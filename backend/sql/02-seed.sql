@@ -14,7 +14,7 @@ INSERT INTO sys_admin_role (admin_id, role_id) VALUES (1, 1);
 -- menus: id, parent, name, title, type, path, component, icon, perms, sort
 INSERT INTO sys_menu (id, parent_id, name, title, type, path, component, icon, perms, sort, visible) VALUES
 (1, 0, 'Dashboard', '数据看板', 'MENU', '/dashboard', 'dashboard/index', 'Odometer', 'dashboard:view', 0, 1),
-(10, 0, 'Goods', '商品价格', 'DIR', '/goods', NULL, 'Goods', NULL, 10, 1),
+(10, 0, 'Goods', '分类与指导价', 'DIR', '/goods', NULL, 'Goods', NULL, 10, 1),
 (11, 10, 'GoodsCategory', '垃圾分类', 'MENU', 'category', 'goods/category/index', 'Menu', 'recycle:category:list', 1, 1),
 (111, 11, 'CatAdd', '新增分类', 'BUTTON', NULL, NULL, NULL, 'recycle:category:add', 1, 1),
 (112, 11, 'CatEdit', '编辑分类', 'BUTTON', NULL, NULL, NULL, 'recycle:category:update', 2, 1),
@@ -23,7 +23,7 @@ INSERT INTO sys_menu (id, parent_id, name, title, type, path, component, icon, p
 (121, 12, 'SkuAdd', '新增SKU', 'BUTTON', NULL, NULL, NULL, 'recycle:sku:add', 1, 1),
 (122, 12, 'SkuEdit', '编辑SKU', 'BUTTON', NULL, NULL, NULL, 'recycle:sku:update', 2, 1),
 (123, 12, 'SkuDel', '删除SKU', 'BUTTON', NULL, NULL, NULL, 'recycle:sku:delete', 3, 1),
-(13, 10, 'GoodsPrice', '价格维护', 'MENU', 'price', 'goods/price/index', 'PriceTag', 'recycle:sku:price', 3, 1),
+(13, 10, 'GoodsPrice', '指导价', 'MENU', 'price', 'goods/price/index', 'PriceTag', 'recycle:sku:price', 3, 1),
 (20, 0, 'Station', '回收站', 'DIR', '/station', NULL, 'OfficeBuilding', NULL, 20, 1),
 (21, 20, 'StationAudit', '入驻审核', 'MENU', 'audit', 'station/audit/index', 'Stamp', 'store:apply:list', 1, 1),
 (211, 21, 'ApplyAudit', '审核', 'BUTTON', NULL, NULL, NULL, 'store:apply:audit', 1, 1),

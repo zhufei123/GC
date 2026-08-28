@@ -35,14 +35,43 @@
     <view class="list">
       <view class="list__header">
         <text class="list__title">附近回收站</text>
-        <text class="list__count">{{ stores.length ? `共 ${stores.length} 家` : "" }}</text>
+        <text class="list__count">{{ displayedStores.length ? `共 ${displayedStores.length} 家` : "" }}</text>
+      </view>
+
+      <view class="toolbar">
+        <view class="toolbar__search">
+          <wd-icon name="search" size="28rpx" color="#c0c4cc" />
+          <input
+            class="toolbar__input"
+            :value="keyword"
+            placeholder="搜索站名 / 地址"
+            confirm-type="search"
+            @input="(e: any) => (keyword = e.detail.value)"
+          />
+        </view>
+        <view class="chips">
+          <view
+            class="chips__item"
+            :class="{ 'chips__item--active': sortBy === 'distance' }"
+            @tap="sortBy = 'distance'"
+          >
+            距离优先
+          </view>
+          <view
+            class="chips__item"
+            :class="{ 'chips__item--active': sortBy === 'price' }"
+            @tap="sortBy = 'price'"
+          >
+            报价优先
+          </view>
+        </view>
       </view>
 
       <view v-if="loading" class="list__loading"><wd-loading color="#07c160" /></view>
 
       <template v-else>
         <view
-          v-for="store in stores"
+          v-for="store in displayedStores"
           :key="store.id"
           class="store-card"
           :class="{ 'store-card--active': selectedStore?.id === store.id }"
@@ -78,14 +107,14 @@
           </view>
         </view>
 
-        <wd-status-tip v-if="!stores.length" image="content" tip="附近暂无回收站" />
+        <wd-status-tip v-if="!displayedStores.length" image="content" tip="附近暂无回收站" />
       </template>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import { onLoad, onUnload } from "@dcloudio/uni-app";
 import {
   getNearbyStores,
@@ -101,11 +130,28 @@ const selectedStore = ref<StoreItem | null>(null);
 const selectMode = ref(false);
 const mapReady = ref(false);
 const mapFailed = ref(false);
+const keyword = ref("");
+const sortBy = ref<"distance" | "price">("distance");
 
 let center = { ...FALLBACK_LOCATION };
 let map: any = null;
 let leafletLib: any = null;
 let markerLayer: any = null;
+
+const displayedStores = computed(() => {
+  const kw = keyword.value.trim().toLowerCase();
+  let list = stores.value.filter((s) => {
+    if (!kw) return true;
+    return (
+      (s.name || "").toLowerCase().includes(kw) ||
+      (s.address || "").toLowerCase().includes(kw)
+    );
+  });
+  if (sortBy.value === "price") {
+    list = [...list].sort((a, b) => Number(b.highlightPrice || 0) - Number(a.highlightPrice || 0));
+  }
+  return list;
+});
 
 function formatDistance(km: number) {
   const n = Number(km);
@@ -146,7 +192,7 @@ async function loadStores() {
   loading.value = true;
   try {
     center = await resolveUserLocation();
-    stores.value = (await getNearbyStores(center.longitude, center.latitude)) || [];
+    stores.value = (await getNearbyStores(center.longitude, center.latitude, { radiusKm: 20 })) || [];
     cacheNearbyStores(stores.value);
   } catch (e) {
     stores.value = [];
@@ -379,6 +425,46 @@ onUnload(() => {
     display: flex;
     justify-content: center;
     padding: 80rpx 0;
+  }
+}
+
+.toolbar {
+  margin-bottom: 20rpx;
+
+  &__search {
+    display: flex;
+    align-items: center;
+    gap: 12rpx;
+    background: #fff;
+    border-radius: 16rpx;
+    padding: 16rpx 20rpx;
+    margin-bottom: 16rpx;
+  }
+
+  &__input {
+    flex: 1;
+    font-size: 26rpx;
+  }
+}
+
+.chips {
+  display: flex;
+  gap: 16rpx;
+
+  &__item {
+    font-size: 24rpx;
+    color: #4e5969;
+    background: #fff;
+    border-radius: 28rpx;
+    padding: 10rpx 24rpx;
+    border: 2rpx solid transparent;
+
+    &--active {
+      color: $theme-color;
+      background: $theme-color-light;
+      border-color: $theme-color;
+      font-weight: 600;
+    }
   }
 }
 

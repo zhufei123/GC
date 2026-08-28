@@ -101,7 +101,7 @@
           <wd-icon name="money-circle" size="44rpx" color="#07c160" />
           <view>
             <view class="quick-row__title">今日回收价</view>
-            <view class="quick-row__desc">实时报价查询</view>
+            <view class="quick-row__desc">指导价 · 门店比价</view>
           </view>
         </view>
         <view class="quick-row__item" @tap="$emit('switch-tab', 2)">

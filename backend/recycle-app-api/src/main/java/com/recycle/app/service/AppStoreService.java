@@ -39,7 +39,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AppStoreService {
 
-    private static final BigDecimal NEARBY_RADIUS_KM = BigDecimal.valueOf(10);
+    private static final BigDecimal DEFAULT_RADIUS_KM = BigDecimal.valueOf(20);
+    private static final BigDecimal MAX_RADIUS_KM = BigDecimal.valueOf(50);
     private static final int TOP_PRICES = 3;
 
     private final RecycleStationMapper stationMapper;
@@ -49,7 +50,9 @@ public class AppStoreService {
     private final StationPriceReader stationPriceReader;
     private final SkuPriceReader skuPriceReader;
 
-    public List<StoreNearbyVO> nearby(BigDecimal longitude, BigDecimal latitude) {
+    public List<StoreNearbyVO> nearby(BigDecimal longitude, BigDecimal latitude,
+                                      BigDecimal radiusKm, String sort) {
+        BigDecimal radius = clampRadius(radiusKm);
         List<RecycleStation> stations = visibleStations();
         if (stations.isEmpty()) {
             return List.of();
@@ -91,9 +94,8 @@ public class AppStoreService {
                     }).toList());
                     return vo;
                 })
-                .filter(vo -> vo.getDistanceKm() == null || vo.getDistanceKm().compareTo(NEARBY_RADIUS_KM) <= 0)
-                .sorted(Comparator.comparing(StoreNearbyVO::getDistanceKm,
-                        Comparator.nullsLast(Comparator.naturalOrder())))
+                .filter(vo -> vo.getDistanceKm() == null || vo.getDistanceKm().compareTo(radius) <= 0)
+                .sorted(nearbyComparator(sort))
                 .toList();
     }
 
@@ -158,7 +160,7 @@ public class AppStoreService {
     }
 
     /** 某 SKU 的附近门店报价：距离优先，再价高者优先 */
-    public List<SkuQuoteVO> skuQuotes(Long skuId, BigDecimal longitude, BigDecimal latitude) {
+    public List<SkuQuoteVO> skuQuotes(Long skuId, BigDecimal longitude, BigDecimal latitude, BigDecimal radiusKm) {
         Sku sku = skuMapper.selectById(skuId);
         if (sku == null || sku.getStatus() == null || sku.getStatus() != 1) {
             throw new BizException(ErrorCode.SKU_OFFLINE);
@@ -185,17 +187,43 @@ public class AppStoreService {
                     vo.setLongitude(s.getLongitude());
                     vo.setLatitude(s.getLatitude());
                     vo.setPrice(priceByStation.get(s.getId()));
+                    vo.setUnit(sku.getUnit());
                     vo.setDistanceKm(GeoUtils.distanceKm(longitude, latitude, s.getLongitude(), s.getLatitude()));
                     vo.setBusinessHours(s.getBusinessHours());
                     vo.setBusinessStatus(s.getBusinessStatus());
                     vo.setOpenNow(openNow(s));
                     return vo;
                 })
-                .filter(vo -> vo.getDistanceKm() == null || vo.getDistanceKm().compareTo(NEARBY_RADIUS_KM) <= 0)
+                .filter(vo -> vo.getDistanceKm() == null || vo.getDistanceKm().compareTo(clampRadius(radiusKm)) <= 0)
                 .sorted(Comparator.comparing(SkuQuoteVO::getDistanceKm,
                                 Comparator.nullsLast(Comparator.naturalOrder()))
                         .thenComparing(SkuQuoteVO::getPrice, Comparator.reverseOrder()))
                 .toList();
+    }
+
+    private BigDecimal clampRadius(BigDecimal radiusKm) {
+        if (radiusKm == null) {
+            return DEFAULT_RADIUS_KM;
+        }
+        if (radiusKm.compareTo(BigDecimal.ONE) < 0) {
+            return BigDecimal.ONE;
+        }
+        if (radiusKm.compareTo(MAX_RADIUS_KM) > 0) {
+            return MAX_RADIUS_KM;
+        }
+        return radiusKm;
+    }
+
+    /** price：亮点报价高者优先；默认按距离 */
+    private Comparator<StoreNearbyVO> nearbyComparator(String sort) {
+        if ("price".equalsIgnoreCase(sort)) {
+            return Comparator.comparing(StoreNearbyVO::getHighlightPrice,
+                            Comparator.nullsLast(Comparator.reverseOrder()))
+                    .thenComparing(StoreNearbyVO::getDistanceKm,
+                            Comparator.nullsLast(Comparator.naturalOrder()));
+        }
+        return Comparator.comparing(StoreNearbyVO::getDistanceKm,
+                Comparator.nullsLast(Comparator.naturalOrder()));
     }
 
     private List<RecycleStation> visibleStations() {

@@ -309,7 +309,7 @@ async function handleStatusChange(row: SkuVO): Promise<void> {
           <el-input v-model.trim="form.price" placeholder="如 0.85(元/单位)" style="width: 200px" />
         </el-form-item>
         <el-form-item v-else label="当前价">
-          <span class="price-tip">改价请前往「价格管理」页,保留调价日志</span>
+          <span class="price-tip">改价请前往「指导价」页,保留调价日志。用户结算以回收站报价为准。</span>
         </el-form-item>
         <el-form-item label="排序">
           <el-input-number v-model="form.sort" :min="0" :max="9999" />

@@ -4,8 +4,10 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 
 import {
   getStorePage,
+  getStorePrices,
   updateStore,
   updateStoreStatus,
+  type StorePriceVO,
   type StoreVO,
 } from '@/api/station'
 
@@ -102,6 +104,25 @@ async function submitForm(): Promise<void> {
     submitting.value = false
   }
 }
+
+/* ---------------- 门店报价抽屉 ---------------- */
+const priceDrawerVisible = ref(false)
+const priceLoading = ref(false)
+const priceStore = ref<StoreVO | null>(null)
+const priceList = ref<StorePriceVO[]>([])
+
+async function openPrices(row: StoreVO): Promise<void> {
+  priceStore.value = row
+  priceDrawerVisible.value = true
+  priceLoading.value = true
+  try {
+    priceList.value = (await getStorePrices(row.id)) ?? []
+  } catch {
+    priceList.value = []
+  } finally {
+    priceLoading.value = false
+  }
+}
 </script>
 
 <template>
@@ -168,8 +189,11 @@ async function submitForm(): Promise<void> {
         <el-table-column prop="createdAt" label="入驻时间" width="170">
           <template #default="{ row }">{{ row.createdAt || row.createTime || '-' }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="150" align="center" fixed="right">
+        <el-table-column label="操作" width="210" align="center" fixed="right">
           <template #default="{ row }">
+            <el-button v-permission="'store:store:list'" link type="primary" @click="openPrices(row)">
+              报价
+            </el-button>
             <el-button v-permission="'store:store:update'" link type="primary" @click="openDialog(row)">
               编辑
             </el-button>
@@ -218,5 +242,49 @@ async function submitForm(): Promise<void> {
         <el-button type="primary" :loading="submitting" @click="submitForm">确定</el-button>
       </template>
     </el-dialog>
+
+    <el-drawer
+      v-model="priceDrawerVisible"
+      :title="`本站报价 - ${priceStore?.name ?? ''}`"
+      size="560px"
+    >
+      <p class="price-hint">以下为回收站自主发布的报价，指导价仅作对照。</p>
+      <el-table v-loading="priceLoading" :data="priceList" border stripe size="small">
+        <el-table-column prop="skuName" label="品类" min-width="140" />
+        <el-table-column prop="categoryName" label="分类" width="90" />
+        <el-table-column label="本站价" width="110" align="right">
+          <template #default="{ row }">
+            <span class="price-text">¥{{ row.price }} / {{ row.unit || 'kg' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="指导价" width="100" align="right">
+          <template #default="{ row }">
+            {{ row.guidePrice != null ? `¥${row.guidePrice}` : '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column label="状态" width="80" align="center">
+          <template #default="{ row }">
+            <el-tag :type="row.status === 1 ? 'success' : 'info'" size="small">
+              {{ row.status === 1 ? '报价中' : '停报' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <template #empty>
+          <el-empty description="该站尚未发布报价" :image-size="70" />
+        </template>
+      </el-table>
+    </el-drawer>
   </div>
 </template>
+
+<style scoped lang="scss">
+.price-hint {
+  margin: 0 0 12px;
+  color: #909399;
+  font-size: 13px;
+}
+.price-text {
+  color: #e6a23c;
+  font-weight: 600;
+}
+</style>

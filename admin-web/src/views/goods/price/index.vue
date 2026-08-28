@@ -136,8 +136,8 @@ async function openLogDrawer(row: SkuVO): Promise<void> {
 
     <el-card class="table-card" shadow="never">
       <div class="table-toolbar">
-        <span class="table-title">价格管理</span>
-        <el-tag type="info" effect="plain">城市维度 P0 默认「全国」</el-tag>
+        <span class="table-title">平台指导价</span>
+        <el-tag type="warning" effect="plain">仅作参考，用户按下单时回收站报价结算</el-tag>
       </div>
 
       <el-table v-loading="loading" :data="list" border stripe>
@@ -146,7 +146,7 @@ async function openLogDrawer(row: SkuVO): Promise<void> {
           <template #default="{ row }">{{ row.categoryName || row.categoryId || '-' }}</template>
         </el-table-column>
         <el-table-column prop="unit" label="单位" width="80" align="center" />
-        <el-table-column label="当前价" width="130" align="right">
+        <el-table-column label="指导价" width="130" align="right">
           <template #default="{ row }">
             <span v-if="row.price" class="price-text">¥{{ row.price }} / {{ row.unit }}</span>
             <el-tag v-else size="small" type="info">暂无报价</el-tag>
@@ -189,7 +189,14 @@ async function openLogDrawer(row: SkuVO): Promise<void> {
     </el-card>
 
     <!-- 调价弹窗 -->
-    <el-dialog v-model="priceDialogVisible" title="价格调整" width="460px" destroy-on-close>
+    <el-dialog v-model="priceDialogVisible" title="调整指导价" width="460px" destroy-on-close>
+      <el-alert
+        type="warning"
+        :closable="false"
+        show-icon
+        class="sku-desc"
+        title="指导价供回收站参考。用户选站下单、称重结算均以该站自主报价为准。"
+      />
       <el-descriptions v-if="currentSku" :column="2" border size="small" class="sku-desc">
         <el-descriptions-item label="品类">{{ currentSku.name }}</el-descriptions-item>
         <el-descriptions-item label="当前价">

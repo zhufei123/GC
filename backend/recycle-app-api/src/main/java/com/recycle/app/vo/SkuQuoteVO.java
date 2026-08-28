@@ -16,6 +16,7 @@ public class SkuQuoteVO {
     private BigDecimal longitude;
     private BigDecimal latitude;
     private BigDecimal price;
+    private String unit;
     private BigDecimal distanceKm;
     private String businessHours;
     private Integer businessStatus;

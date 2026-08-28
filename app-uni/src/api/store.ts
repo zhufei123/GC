@@ -64,8 +64,12 @@ export interface SkuQuoteItem {
   guide?: boolean;
 }
 
-export function getNearbyStores(longitude: number, latitude: number) {
-  return get<StoreItem[]>("/app-api/store/nearby", { longitude, latitude }, { silent: true });
+export function getNearbyStores(longitude: number, latitude: number, extra?: { radiusKm?: number; sort?: string }) {
+  return get<StoreItem[]>(
+    "/app-api/store/nearby",
+    { longitude, latitude, radiusKm: extra?.radiusKm ?? 20, sort: extra?.sort },
+    { silent: true }
+  );
 }
 
 export function getStoreDetail(id: string, longitude?: number, latitude?: number) {

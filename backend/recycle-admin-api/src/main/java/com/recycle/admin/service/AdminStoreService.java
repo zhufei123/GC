@@ -2,23 +2,37 @@ package com.recycle.admin.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.recycle.admin.dto.AuditDTO;
+import com.recycle.admin.vo.AdminStorePriceVO;
 import com.recycle.common.core.BizException;
 import com.recycle.common.core.ErrorCode;
 import com.recycle.common.core.PageQuery;
 import com.recycle.common.core.PageResult;
 import com.recycle.common.entity.member.User;
+import com.recycle.common.entity.recycle.Category;
+import com.recycle.common.entity.recycle.Sku;
 import com.recycle.common.entity.store.RecycleStation;
 import com.recycle.common.entity.store.StationApply;
+import com.recycle.common.entity.store.StationSkuPrice;
+import com.recycle.common.mapper.CategoryMapper;
 import com.recycle.common.mapper.RecycleStationMapper;
+import com.recycle.common.mapper.SkuMapper;
 import com.recycle.common.mapper.StationApplyMapper;
+import com.recycle.common.mapper.StationSkuPriceMapper;
 import com.recycle.common.mapper.UserMapper;
+import com.recycle.common.support.SkuPriceReader;
+import com.recycle.common.support.StationPriceSeeder;
 import com.recycle.common.util.QueryParams;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -27,6 +41,11 @@ public class AdminStoreService {
     private final RecycleStationMapper stationMapper;
     private final StationApplyMapper applyMapper;
     private final UserMapper userMapper;
+    private final StationSkuPriceMapper stationSkuPriceMapper;
+    private final SkuMapper skuMapper;
+    private final CategoryMapper categoryMapper;
+    private final SkuPriceReader skuPriceReader;
+    private final StationPriceSeeder stationPriceSeeder;
 
     public PageResult<RecycleStation> storePage(String name, Integer status, PageQuery query) {
         String keyword = QueryParams.firstText(query.getKeyword(), name);
@@ -112,11 +131,49 @@ public class AdminStoreService {
                 station.setAuditStatus("approved");
                 station.setStatus(1);
                 stationMapper.insert(station);
+                stationPriceSeeder.seedFromGuideIfEmpty(station.getId());
+            } else {
+                stationPriceSeeder.seedFromGuideIfEmpty(existing.getId());
             }
         } else {
             user.setRecyclerStatus("rejected");
             userMapper.updateById(user);
         }
+    }
+
+    /** 管理端查看某站报价，对照平台指导价 */
+    public List<AdminStorePriceVO> storePrices(Long id) {
+        requireStore(id);
+        List<StationSkuPrice> rows = stationSkuPriceMapper.selectList(
+                new LambdaQueryWrapper<StationSkuPrice>()
+                        .eq(StationSkuPrice::getStationId, id));
+        if (rows.isEmpty()) {
+            return List.of();
+        }
+        List<Long> skuIds = rows.stream().map(StationSkuPrice::getSkuId).distinct().toList();
+        Map<Long, Sku> skus = skuMapper.selectByIds(skuIds).stream()
+                .collect(Collectors.toMap(Sku::getId, s -> s));
+        Map<Long, String> categoryNames = categoryMapper.selectByIds(
+                        skus.values().stream().map(Sku::getCategoryId).distinct().toList())
+                .stream().collect(Collectors.toMap(Category::getId, Category::getName, (a, b) -> a));
+        Map<Long, BigDecimal> guidePrices = skuPriceReader.currentPrices(skuIds);
+        return rows.stream()
+                .filter(r -> skus.containsKey(r.getSkuId()))
+                .sorted(Comparator.comparing(StationSkuPrice::getStatus, Comparator.reverseOrder())
+                        .thenComparing(StationSkuPrice::getPrice, Comparator.reverseOrder()))
+                .map(r -> {
+                    Sku sku = skus.get(r.getSkuId());
+                    AdminStorePriceVO vo = new AdminStorePriceVO();
+                    vo.setSkuId(sku.getId());
+                    vo.setSkuName(sku.getName());
+                    vo.setUnit(sku.getUnit());
+                    vo.setCategoryName(categoryNames.get(sku.getCategoryId()));
+                    vo.setPrice(r.getPrice());
+                    vo.setStatus(r.getStatus());
+                    vo.setGuidePrice(guidePrices.get(sku.getId()));
+                    return vo;
+                })
+                .toList();
     }
 
     private RecycleStation requireStore(Long id) {

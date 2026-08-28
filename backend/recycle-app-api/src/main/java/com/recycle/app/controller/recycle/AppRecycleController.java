@@ -49,7 +49,8 @@ public class AppRecycleController {
     @GetMapping("/sku/{skuId}/quotes")
     public R<List<SkuQuoteVO>> skuQuotes(@PathVariable Long skuId,
                                          @RequestParam(required = false) BigDecimal longitude,
-                                         @RequestParam(required = false) BigDecimal latitude) {
-        return R.ok(storeService.skuQuotes(skuId, longitude, latitude));
+                                         @RequestParam(required = false) BigDecimal latitude,
+                                         @RequestParam(required = false) BigDecimal radiusKm) {
+        return R.ok(storeService.skuQuotes(skuId, longitude, latitude, radiusKm));
     }
 }
