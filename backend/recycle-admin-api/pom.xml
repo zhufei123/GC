@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.recycle</groupId>
+        <artifactId>recycle-backend</artifactId>
+        <version>1.0.0</version>
+    </parent>
+
+    <artifactId>recycle-admin-api</artifactId>
+    <name>recycle-admin-api</name>
+    <description>管理端接口模块 + 唯一启动模块</description>
+
+    <dependencies>
+        <!-- 聚合依赖仅为打唯一 fat-jar；admin 代码禁止 import com.recycle.app.* -->
+        <dependency>
+            <groupId>com.recycle</groupId>
+            <artifactId>recycle-app-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <finalName>backend</finalName>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>repackage</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

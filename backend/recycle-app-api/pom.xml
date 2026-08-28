@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.recycle</groupId>
+        <artifactId>recycle-backend</artifactId>
+        <version>1.0.0</version>
+    </parent>
+
+    <artifactId>recycle-app-api</artifactId>
+    <name>recycle-app-api</name>
+    <description>App 端（C 端客户 + B 端老板）接口模块</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.recycle</groupId>
+            <artifactId>recycle-common</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+</project>
