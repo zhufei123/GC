@@ -43,6 +43,8 @@ export interface OrderItemVO {
 
 export interface OrderTimelineVO {
   status?: string
+  /** 后端 AdminOrderVO.TimelineVO 的节点文案字段 */
+  label?: string
   title?: string
   remark?: string
   time?: string
