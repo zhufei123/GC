@@ -61,7 +61,12 @@ export function createOrder(data: CreateOrderData) {
 }
 
 export function getOrderPage(params: { pageNum?: number; pageSize?: number; status?: string }) {
-  return get<PageResult<OrderVO>>("/app-api/order/page", params, { silent: true });
+  const status = params.status && params.status !== "ALL" ? params.status : undefined;
+  return get<PageResult<OrderVO>>(
+    "/app-api/order/page",
+    { pageNum: params.pageNum, pageSize: params.pageSize, ...(status ? { status } : {}) },
+    { silent: true }
+  );
 }
 
 export function getOrderDetail(id: string) {

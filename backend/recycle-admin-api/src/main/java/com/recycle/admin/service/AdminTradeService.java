@@ -36,9 +36,10 @@ public class AdminTradeService {
         LocalDateTime begin = QueryParams.startOfDay(query.getBeginDate());
         LocalDateTime endExclusive = QueryParams.startOfNextDay(query.getEndDate());
         String no = QueryParams.firstText(orderNo, query.getKeyword());
+        String statusFilter = QueryParams.orderStatus(status);
         Page<RecycleOrder> page = orderMapper.selectPage(query.toPage(),
                 new LambdaQueryWrapper<RecycleOrder>()
-                        .eq(StringUtils.hasText(status), RecycleOrder::getStatus, status)
+                        .eq(StringUtils.hasText(statusFilter), RecycleOrder::getStatus, statusFilter)
                         .like(StringUtils.hasText(no), RecycleOrder::getOrderNo, no)
                         .eq(userId != null, RecycleOrder::getUserId, userId)
                         .ge(begin != null, RecycleOrder::getCreateTime, begin)

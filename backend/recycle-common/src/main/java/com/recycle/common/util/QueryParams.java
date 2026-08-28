@@ -29,6 +29,18 @@ public final class QueryParams {
         return StringUtils.hasText(value) ? value.trim().toLowerCase() : null;
     }
 
+    /** 订单状态筛选：空 / ALL 表示不过滤 */
+    public static String orderStatus(String status) {
+        if (!StringUtils.hasText(status)) {
+            return null;
+        }
+        String trimmed = status.trim();
+        if ("ALL".equalsIgnoreCase(trimmed) || "*".equals(trimmed)) {
+            return null;
+        }
+        return trimmed;
+    }
+
     public static LocalDateTime startOfDay(String date) {
         LocalDate parsed = parseDate(date);
         return parsed == null ? null : parsed.atStartOfDay();

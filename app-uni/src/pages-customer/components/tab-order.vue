@@ -4,7 +4,7 @@
       <view class="order__title">我的订单</view>
     </view>
     <wd-tabs v-model="activeTab" @change="onTabChange" custom-class="order__tabs">
-      <wd-tab v-for="t in STATUS_TABS" :key="t.value" :title="t.label" />
+      <wd-tab v-for="(t, i) in STATUS_TABS" :key="t.label" :name="i" :title="t.label" />
     </wd-tabs>
 
     <scroll-view scroll-y class="order__list" @scrolltolower="loadMore">
@@ -58,7 +58,7 @@ import type { OrderVO } from "@/api/order";
 import { statusText, statusType } from "@/utils/order-status";
 
 const STATUS_TABS = [
-  { label: "全部", value: "" },
+  { label: "全部", value: "ALL" },
   { label: "待接单", value: "PENDING" },
   { label: "已接单", value: "ACCEPTED" },
   { label: "服务中", value: "SERVING" },
@@ -73,31 +73,36 @@ const loading = ref(false);
 const finished = ref(false);
 let pageNum = 1;
 const pageSize = 10;
+let loadSeq = 0;
 
 async function load(reset = false) {
-  if (loading.value) return;
+  if (loading.value && !reset) return;
   if (reset) {
     pageNum = 1;
     finished.value = false;
     list.value = [];
+  } else if (finished.value) {
+    return;
   }
-  if (finished.value) return;
+  const reqSeq = ++loadSeq;
   loading.value = true;
   try {
-    const status = STATUS_TABS[activeTab.value].value;
+    const tab = STATUS_TABS[activeTab.value] || STATUS_TABS[0];
+    const status = tab.value && tab.value !== "ALL" ? tab.value : undefined;
     const res = await getOrderPage({
       pageNum,
       pageSize,
-      ...(status ? { status } : {}),
+      status,
     });
+    if (reqSeq !== loadSeq) return;
     const rows = res?.list || [];
     list.value = pageNum === 1 ? rows : list.value.concat(rows);
     finished.value = rows.length < pageSize;
     pageNum += 1;
   } catch (e) {
-    finished.value = true;
+    if (reqSeq === loadSeq) finished.value = true;
   } finally {
-    loading.value = false;
+    if (reqSeq === loadSeq) loading.value = false;
   }
 }
 
@@ -109,7 +114,11 @@ function loadMore() {
   load();
 }
 
-function onTabChange() {
+function onTabChange(e: { index?: number; name?: number | string }) {
+  const idx = typeof e?.index === "number" ? e.index : Number(e?.name);
+  if (!Number.isNaN(idx) && idx >= 0) {
+    activeTab.value = idx;
+  }
   load(true);
 }
 

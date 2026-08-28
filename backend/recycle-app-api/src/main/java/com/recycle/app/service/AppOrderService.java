@@ -23,6 +23,7 @@ import com.recycle.common.mapper.SkuMapper;
 import com.recycle.common.mapper.UserAddressMapper;
 import com.recycle.common.support.SkuPriceReader;
 import com.recycle.common.util.JsonUtils;
+import com.recycle.common.util.QueryParams;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
@@ -177,10 +178,11 @@ public class AppOrderService {
     }
 
     public PageResult<OrderVO> page(Long userId, String status, PageQuery query) {
+        String statusFilter = QueryParams.orderStatus(status);
         Page<RecycleOrder> page = orderMapper.selectPage(query.toPage(),
                 new LambdaQueryWrapper<RecycleOrder>()
                         .eq(RecycleOrder::getUserId, userId)
-                        .eq(StringUtils.hasText(status), RecycleOrder::getStatus, status)
+                        .eq(StringUtils.hasText(statusFilter), RecycleOrder::getStatus, statusFilter)
                         .orderByDesc(RecycleOrder::getCreateTime));
         return PageResult.of(page, o -> orderAssembler.toVO(o, false, false));
     }

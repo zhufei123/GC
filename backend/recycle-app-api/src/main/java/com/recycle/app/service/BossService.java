@@ -23,6 +23,7 @@ import com.recycle.common.mapper.RecycleStationMapper;
 import com.recycle.common.mapper.SkuMapper;
 import com.recycle.common.support.SkuPriceReader;
 import com.recycle.common.util.JsonUtils;
+import com.recycle.common.util.QueryParams;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -228,10 +229,11 @@ public class BossService {
 
     public PageResult<OrderVO> orderPage(Long bossId, String status, PageQuery query) {
         RecycleStation station = myStation(bossId);
+        String statusFilter = QueryParams.orderStatus(status);
         Page<RecycleOrder> page = orderMapper.selectPage(query.toPage(),
                 new LambdaQueryWrapper<RecycleOrder>()
                         .eq(RecycleOrder::getStationId, station.getId())
-                        .eq(StringUtils.hasText(status), RecycleOrder::getStatus, status)
+                        .eq(StringUtils.hasText(statusFilter), RecycleOrder::getStatus, statusFilter)
                         .orderByDesc(RecycleOrder::getCreateTime));
         return PageResult.of(page, o -> orderAssembler.toVO(o, false, false));
     }

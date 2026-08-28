@@ -36,7 +36,12 @@ export function acceptOrder(id: string) {
 }
 
 export function getBossOrderPage(params: { pageNum?: number; pageSize?: number; status?: string }) {
-  return get<PageResult<OrderVO>>("/app-api/boss/order/page", params, { silent: true });
+  const status = params.status && params.status !== "ALL" ? params.status : undefined;
+  return get<PageResult<OrderVO>>(
+    "/app-api/boss/order/page",
+    { pageNum: params.pageNum, pageSize: params.pageSize, ...(status ? { status } : {}) },
+    { silent: true }
+  );
 }
 
 export function getBossOrderDetail(id: string) {
