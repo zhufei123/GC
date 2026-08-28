@@ -4,32 +4,40 @@ overview: 完成垃圾回收平台(双角色多端应用 + 管理后台)的需�
 todos:
   - id: docs-research
     content: 编写 docs/01-需求调研.md(角色功能清单、业务流程、ER 数据模型)与 docs/02-技术选型.md
-    status: pending
+    status: completed
   - id: docs-accounts
     content: 编写 docs/03-账号资质与备案办理指引.md(域名/ICP/小程序/App备案/软著时间线与操作步骤)
-    status: pending
+    status: completed
   - id: local-env
     content: 检测本地环境(JDK21/Node/pnpm/Docker),编写 deploy/docker-compose.local.yml 启动 MySQL+Redis
-    status: pending
+    status: completed
   - id: db-schema
     content: 设计并落库核心表结构 SQL(用户/回收站/分类/SKU/价格/订单/地址/管理员RBAC)
-    status: pending
+    status: completed
   - id: backend-init
     content: 初始化 backend:Spring Boot 4.1 + JDK21 + MyBatis-Plus + Sa-Token + Knife4j,含登录、RBAC、分类/SKU示例CRUD
-    status: pending
+    status: completed
   - id: admin-init
     content: 初始化 admin-web:Vue3 + Element Plus,登录页、主框架布局、动态菜单、对接后端登录接口
-    status: pending
+    status: completed
   - id: uniapp-init
     content: 初始化 app-uni:uni-app Vue3+TS+Pinia+wot-design-uni,请求封装、登录页、客户/老板角色分包与 tabBar 切换,验证 H5/微信/支付宝三端编译通过
-    status: pending
+    status: completed
   - id: deploy-docs
     content: 编写 deploy/ 生产部署配置(docker-compose.prod/nginx/HTTPS/备份脚本)与 docs/04-部署上线指南.md
-    status: pending
+    status: completed
 isProject: false
 ---
 
 # 垃圾回收平台启动方案(调研 + 选型 + 环境 + 部署)
+
+本地联调入口见 **[docs/00-落地实现总方案.md](docs/00-落地实现总方案.md)**。
+
+| 服务 | 命令 | 地址 |
+| --- | --- | --- |
+| 后端 | `cd backend && mvn -q -DskipTests package && java -jar recycle-admin-api/target/backend.jar` | http://127.0.0.1:8080 |
+| 管理后台 | `cd admin-web && pnpm dev` | http://127.0.0.1:5173 admin / Admin@123 |
+| C/B 端 H5 | `cd app-uni && pnpm run dev:h5` | http://127.0.0.1:5174 验证码 123456 |
 
 ## 一、需求调研结论
 
@@ -134,7 +142,7 @@ flowchart TB
 
 ```
 GC/
-├── docs/            # 01需求调研 02技术选型 03账号与备案指引 04部署上线指南
+├── docs/            # 00联调手册 01需求调研 02技术选型 03账号与备案 04部署 05库表 06接口 07前端
 ├── backend/         # Spring Boot 4.1 后端骨架(可运行,含登录+RBAC+示例CRUD)
 ├── admin-web/       # 管理后台骨架(可运行,登录+布局+菜单)
 ├── app-uni/         # uni-app 骨架(可运行,登录+角色分包+四端编译通过)
