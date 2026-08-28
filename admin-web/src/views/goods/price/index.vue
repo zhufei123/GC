@@ -235,16 +235,16 @@ async function openLogDrawer(row: SkuVO): Promise<void> {
         </el-table-column>
         <el-table-column label="新价" width="90" align="right">
           <template #default="{ row }">
-            <span class="price-text">¥{{ row.newPrice || row.price || '-' }}</span>
+            <span class="price-text">¥{{ row.newPrice || '-' }}</span>
           </template>
         </el-table-column>
         <el-table-column label="备注" min-width="110">
           <template #default="{ row }">{{ row.reason || '-' }}</template>
         </el-table-column>
-        <el-table-column label="操作人 / 时间" min-width="150">
+        <el-table-column label="操作人 / 生效时间" min-width="150">
           <template #default="{ row }">
-            <div>{{ row.operatorName || row.operator || '-' }}</div>
-            <div class="log-time">{{ row.effectiveAt || row.createdAt || row.createTime || '-' }}</div>
+            <div>{{ row.operatorId || '-' }}</div>
+            <div class="log-time">{{ row.effectiveAt || row.createTime || '-' }}</div>
           </template>
         </el-table-column>
         <template #empty>
