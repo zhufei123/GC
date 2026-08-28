@@ -65,6 +65,12 @@ const canCancel = computed(() => {
   return !!s && s !== 'COMPLETED' && s !== 'CANCELLED'
 })
 
+/** 时间线节点样式:当前状态高亮,已经过的节点标记完成 */
+function timelineType(item: OrderTimelineVO): 'primary' | 'success' | undefined {
+  if (!item.status || !detail.value?.status) return undefined
+  return item.status === detail.value.status ? 'primary' : 'success'
+}
+
 async function handleCancel(): Promise<void> {
   if (!detail.value) return
   let reason = ''
@@ -212,7 +218,7 @@ async function handleCancel(): Promise<void> {
               v-for="(item, i) in timeline"
               :key="i"
               :timestamp="item.time || item.createdAt || ''"
-              :type="i === 0 ? 'primary' : undefined"
+              :type="timelineType(item)"
             >
               <div class="timeline-title">
                 {{ item.title || item.label || orderStatusInfo(item.status).label }}
