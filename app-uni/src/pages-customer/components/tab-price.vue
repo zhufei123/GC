@@ -36,6 +36,13 @@
               <template v-if="sku.price">
                 <text class="sku-card__amount">¥{{ sku.price }}</text>
                 <text class="sku-card__unit">/{{ sku.unit || "kg" }}</text>
+                <view
+                  v-if="sku.trend === 'UP' || sku.trend === 'DOWN'"
+                  class="sku-card__trend"
+                  :class="sku.trend === 'UP' ? 'sku-card__trend--up' : 'sku-card__trend--down'"
+                >
+                  {{ sku.trend === "UP" ? "涨" : "跌" }}{{ sku.priceDiff ? ` ${sku.priceDiff}` : "" }}
+                </view>
                 <view class="sku-card__guide">指导价</view>
               </template>
               <wd-tag v-else plain>暂无报价</wd-tag>
@@ -78,6 +85,11 @@ async function doLoad() {
     /* 空态展示 */
   } finally {
     loading.value = false;
+    // 分类为空(接口失败/无数据)时允许下次重试
+    if (!categories.value.length) {
+      loaded = false;
+      loadPromise = null;
+    }
   }
 }
 
@@ -94,14 +106,21 @@ async function selectCategory(categoryId: string | number) {
   await loadSkus(categories.value[index]);
 }
 
+/** 单调递增请求序号：旧请求的响应到达时直接丢弃，避免快速切分类被乱序覆盖 */
+let skuLoadSeq = 0;
+
 async function loadSkus(cat: CategoryNode) {
+  const seq = ++skuLoadSeq;
   loading.value = true;
   try {
-    skus.value = await getSkusUnderCategory(cat);
+    const list = await getSkusUnderCategory(cat);
+    if (seq !== skuLoadSeq) return;
+    skus.value = list;
   } catch (e) {
+    if (seq !== skuLoadSeq) return;
     skus.value = [];
   } finally {
-    loading.value = false;
+    if (seq === skuLoadSeq) loading.value = false;
   }
 }
 
@@ -232,6 +251,25 @@ defineExpose({ refresh, selectCategory });
     font-size: 20rpx;
     color: #86909c;
     text-align: right;
+  }
+
+  // 中国股市习惯：涨红跌绿
+  &__trend {
+    margin-top: 6rpx;
+    font-size: 20rpx;
+    font-weight: 600;
+    padding: 2rpx 12rpx;
+    border-radius: 8rpx;
+
+    &--up {
+      color: #ff4d4f;
+      background: rgba(255, 77, 79, 0.1);
+    }
+
+    &--down {
+      color: #07c160;
+      background: rgba(7, 193, 96, 0.1);
+    }
   }
 }
 </style>

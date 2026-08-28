@@ -54,10 +54,17 @@
         "setting" : {
             "urlCheck" : false
         },
-        "usingComponents" : true
+        "usingComponents" : true,
+        "permission" : {
+            "scope.userLocation" : {
+                "desc" : "用于查找附近回收站与计算上门距离"
+            }
+        },
+        "requiredPrivateInfos" : [ "getLocation", "chooseLocation" ]
     },
     "mp-alipay" : {
-        "usingComponents" : true
+        "usingComponents" : true,
+        "component2" : true
     },
     "mp-baidu" : {
         "usingComponents" : true

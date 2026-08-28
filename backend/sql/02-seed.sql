@@ -49,7 +49,9 @@ INSERT INTO sys_menu (id, parent_id, name, title, type, path, component, icon, p
 (62, 60, 'SysRole', '角色权限', 'MENU', 'role', 'system/role/index', 'Lock', 'system:role:list', 2, 1),
 (621, 62, 'RoleAssign', '分配权限', 'BUTTON', NULL, NULL, NULL, 'system:role:assign', 1, 1),
 (63, 60, 'SysMenu', '菜单管理', 'MENU', 'menu', 'system/menu/index', 'Menu', 'system:menu:list', 3, 1),
-(64, 60, 'SysLog', '操作日志', 'MENU', 'log', 'system/log/index', 'Document', 'system:oplog:list', 4, 1);
+(64, 60, 'SysLog', '操作日志', 'MENU', 'log', 'system/log/index', 'Document', 'system:oplog:list', 4, 1),
+(70, 0, 'Finance', '财务', 'DIR', '/finance', NULL, 'Wallet', NULL, 45, 1),
+(71, 70, 'FinancePayout', '打款单', 'MENU', 'payout', 'finance/payout/index', 'Wallet', 'finance:payout:list', 1, 1);
 
 INSERT INTO sys_role_menu (role_id, menu_id)
 SELECT 1, id FROM sys_menu;
@@ -89,12 +91,12 @@ INSERT INTO banner (id, title, image, link_type, sort, status, start_time, end_t
 (1, '绿色回收 随叫随到', '/static/banner/b1.png', 'NONE', 1, 1, '2026-01-01 00:00:00', '2027-12-31 23:59:59');
 
 INSERT INTO notice (id, title, content, pinned, publish_status, publish_time) VALUES
-(1, '平台结算说明', '本平台回收款项均为线下当面结算，请当面清点现金。', 1, 'published', NOW());
+(1, '平台结算说明', '回收款支持四种打款：当面现金、微信商家转账（需用户确认收款）、支付宝转账、平台钱包余额（可提现）。请按回收站选择的方式收款。', 1, 'published', NOW());
 
 -- demo customer 13800000001 / sms 123456
-INSERT INTO `user` (id, phone, nickname, role, status, recycler_status) VALUES
-(50001, '13800000001', '张三', 'customer', 1, 'none'),
-(50002, '13800000002', '李老板', 'recycler', 1, 'approved');
+INSERT INTO `user` (id, phone, nickname, role, status, recycler_status, openid_wx, openid_alipay) VALUES
+(50001, '13800000001', '张三', 'customer', 1, 'none', 'demo-c-wx-50001', 'demo-c-alipay-50001'),
+(50002, '13800000002', '李老板', 'recycler', 1, 'approved', 'demo-b-wx-50002', 'demo-b-alipay-50002');
 
 INSERT INTO user_address (id, user_id, receiver, phone, province, city, district, street, detail, longitude, latitude, is_default) VALUES
 (60001, 50001, '张三', '13800000001', '广东省', '深圳市', '南山区', '幸福路', '幸福小区3栋2单元501', 113.9534110, 22.5370010, 1);

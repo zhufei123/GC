@@ -119,16 +119,23 @@
     <!-- 城市选择 -->
     <wd-action-sheet v-model="cityPickerVisible" title="选择城市">
       <view class="city-picker">
+        <view class="city-picker__item city-picker__item--locate" @tap="useCurrentLocation">
+          <view class="city-picker__locate">
+            <wd-icon name="aim" size="32rpx" color="#07c160" />
+            <text>使用当前位置</text>
+          </view>
+          <wd-icon v-if="!locationStore.city" name="check" size="32rpx" color="#07c160" />
+        </view>
         <view
           v-for="c in cities"
           :key="c.city"
           class="city-picker__item"
-          :class="{ 'city-picker__item--active': c.city === cityLabel }"
+          :class="{ 'city-picker__item--active': normCity(c.city) === normCity(cityLabel) }"
           @tap="pickCity(c)"
         >
           <text>{{ c.city }}</text>
           <wd-icon
-            v-if="c.city === cityLabel"
+            v-if="normCity(c.city) === normCity(cityLabel)"
             name="check"
             size="32rpx"
             color="#07c160"
@@ -178,6 +185,11 @@ const cities = ref<StoreCityItem[]>([]);
 
 const cityLabel = computed(() => locationStore.city || "深圳市");
 
+/** 归一化城市名，兼容「深圳」与「深圳市」比较 */
+function normCity(s?: string) {
+  return (s || "").replace(/市$/, "");
+}
+
 async function openCityPicker() {
   cityPickerVisible.value = true;
   if (cities.value.length || cityLoading.value) return;
@@ -194,6 +206,13 @@ async function openCityPicker() {
 function pickCity(c: StoreCityItem) {
   locationStore.setCity(c.city, Number(c.longitude) || 0, Number(c.latitude) || 0);
   cityPickerVisible.value = false;
+}
+
+/** 清除已选城市，回退到 GPS/地址定位 */
+function useCurrentLocation() {
+  locationStore.clear();
+  cityPickerVisible.value = false;
+  uni.showToast({ title: "已切换为当前位置", icon: "none" });
 }
 
 async function refresh(force = false) {
@@ -217,6 +236,9 @@ async function refresh(force = false) {
     categories.value = (tree || []).map((n) => ({ id: n.id, name: n.name }));
   } catch (e) {
     /* 保持空态 */
+  } finally {
+    // 分类仍为空则允许下次进入重试
+    if (!categories.value.length) loaded = false;
   }
 }
 
@@ -477,6 +499,17 @@ defineExpose({ refresh });
       color: $theme-color;
       font-weight: 600;
     }
+
+    &--locate {
+      color: $theme-color;
+      font-weight: 600;
+    }
+  }
+
+  &__locate {
+    display: flex;
+    align-items: center;
+    gap: 12rpx;
   }
 
   &__empty {

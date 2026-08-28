@@ -6,17 +6,21 @@ import com.recycle.app.vo.StoreCityVO;
 import com.recycle.app.vo.StoreDetailVO;
 import com.recycle.app.vo.StoreNearbyVO;
 import com.recycle.app.vo.StorePriceVO;
+import com.recycle.app.vo.StoreReviewVO;
 import com.recycle.common.core.BizException;
 import com.recycle.common.core.ErrorCode;
+import com.recycle.common.entity.member.User;
 import com.recycle.common.entity.recycle.Category;
 import com.recycle.common.entity.recycle.Sku;
 import com.recycle.common.entity.store.RecycleStation;
 import com.recycle.common.entity.store.StationSkuPrice;
+import com.recycle.common.entity.trade.OrderReview;
 import com.recycle.common.mapper.CategoryMapper;
 import com.recycle.common.mapper.OrderReviewMapper;
 import com.recycle.common.mapper.RecycleStationMapper;
 import com.recycle.common.mapper.SkuMapper;
 import com.recycle.common.mapper.StationSkuPriceMapper;
+import com.recycle.common.mapper.UserMapper;
 import com.recycle.common.support.SkuPriceReader;
 import com.recycle.common.support.StationPriceReader;
 import com.recycle.common.util.GeoUtils;
@@ -54,6 +58,7 @@ public class AppStoreService {
     private final CategoryMapper categoryMapper;
     private final StationSkuPriceMapper stationSkuPriceMapper;
     private final OrderReviewMapper orderReviewMapper;
+    private final UserMapper userMapper;
     private final StationPriceReader stationPriceReader;
     private final SkuPriceReader skuPriceReader;
 
@@ -108,7 +113,7 @@ public class AppStoreService {
     }
 
     /**
-     * 城市列表：按可见门店的城市分组，坐标取该城市 id 最小的门店；
+     * 城市列表：按可见门店的城市分组，坐标优先取有经纬度的门店（同级取 id 最小）；
      * 真实门店城市在前，末尾追加未覆盖的兜底城市，保证选择器不为空。
      */
     public List<StoreCityVO> cities() {
@@ -119,7 +124,7 @@ public class AppStoreService {
             }
             String city = s.getCity().trim();
             RecycleStation kept = firstByCity.get(city);
-            if (kept == null || s.getId() < kept.getId()) {
+            if (kept == null || preferCityAnchor(s, kept)) {
                 firstByCity.put(city, s);
             }
         }
@@ -140,6 +145,16 @@ public class AppStoreService {
             }
         }
         return result;
+    }
+
+    /** 有经纬度的门店优先作为城市锚点；同等条件下取 id 最小 */
+    private static boolean preferCityAnchor(RecycleStation candidate, RecycleStation kept) {
+        boolean candidateHasGeo = candidate.getLongitude() != null && candidate.getLatitude() != null;
+        boolean keptHasGeo = kept.getLongitude() != null && kept.getLatitude() != null;
+        if (candidateHasGeo != keptHasGeo) {
+            return candidateHasGeo;
+        }
+        return candidate.getId() < kept.getId();
     }
 
     /** 去掉「市」后缀比较，避免「深圳」与「深圳市」重复 */
@@ -207,6 +222,45 @@ public class AppStoreService {
         } catch (Exception e) {
             // order_review 表未建时静默降级
         }
+    }
+
+    /** 门店评价：最新 50 条，昵称脱敏 */
+    public List<StoreReviewVO> reviews(Long id) {
+        RecycleStation s = requireVisible(id);
+        List<OrderReview> rows = orderReviewMapper.selectList(new LambdaQueryWrapper<OrderReview>()
+                .eq(OrderReview::getStationId, s.getId())
+                .orderByDesc(OrderReview::getId)
+                .last("LIMIT 50"));
+        if (rows.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, User> users = userMapper.selectByIds(
+                        rows.stream().map(OrderReview::getUserId).distinct().toList())
+                .stream().collect(Collectors.toMap(User::getId, Function.identity()));
+        return rows.stream().map(r -> {
+            StoreReviewVO vo = new StoreReviewVO();
+            vo.setRating(r.getRating());
+            vo.setComment(r.getComment());
+            vo.setCreateTime(r.getCreateTime());
+            User u = users.get(r.getUserId());
+            vo.setNickname(maskNickname(u == null ? null : u.getNickname()));
+            return vo;
+        }).toList();
+    }
+
+    /** 昵称脱敏：张三丰 → 张*丰 */
+    private static String maskNickname(String nickname) {
+        if (!StringUtils.hasText(nickname)) {
+            return "匿名用户";
+        }
+        String n = nickname.trim();
+        if (n.length() == 1) {
+            return n + "*";
+        }
+        if (n.length() == 2) {
+            return n.charAt(0) + "*";
+        }
+        return n.charAt(0) + "*".repeat(n.length() - 2) + n.charAt(n.length() - 1);
     }
 
     /** 门店报价单（含停报行），附平台指导价对比 */

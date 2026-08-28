@@ -23,6 +23,9 @@ export interface OrderVO {
   orderNo?: string;
   status: string;
   type?: string;
+  /** 回收站 id/名称(再来一单用) */
+  stationId?: string | number;
+  stationName?: string;
   address?: string;
   receiver?: string;
   phone?: string;
@@ -41,6 +44,12 @@ export interface OrderVO {
   /** 微信商家转账确认收款 package 信息(详情返回) */
   packageInfo?: string;
   createTime?: string;
+  /** 订单进度节点时间 yyyy-MM-dd HH:mm:ss */
+  acceptedAt?: string;
+  servedAt?: string;
+  weighedAt?: string;
+  completedAt?: string;
+  cancelledAt?: string;
   estimateItems?: OrderLineItem[];
   actualItems?: OrderLineItem[];
   items?: OrderLineItem[];
@@ -119,4 +128,9 @@ export function submitOrderReview(id: string, rating: number, comment?: string) 
 /** 未评价返回 null */
 export function getOrderReview(id: string) {
   return get<OrderReviewVO | null>(`/app-api/order/${id}/review`, undefined, { silent: true });
+}
+
+/** H5/mock 环境：微信商家转账「确认收款」直接确认(真机走 wx.requestMerchantTransfer) */
+export function confirmWxPayout(id: string) {
+  return post<void>(`/app-api/pay/wx-confirm/${id}`, {}, { loading: true });
 }

@@ -51,5 +51,16 @@ export const useLocationStore = defineStore("location", {
         /* 忽略脏数据 */
       }
     },
+    /** 清除已选城市(含持久化)，resolveUserLocation 回退到 GPS/地址定位 */
+    clear() {
+      this.city = "";
+      this.longitude = 0;
+      this.latitude = 0;
+      try {
+        uni.removeStorageSync(STORAGE_KEY);
+      } catch (e) {
+        /* 忽略存储异常 */
+      }
+    },
   },
 });

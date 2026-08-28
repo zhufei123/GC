@@ -127,6 +127,8 @@
           </view>
         </view>
 
+        <view class="pay-hint">微信打款需用户已绑定微信；mock 下用户需在订单详情点「确认收款」后到账</view>
+
         <wd-button
           type="primary"
           block
@@ -609,6 +611,14 @@ onLoad((options) => {
       border-color: $theme-color;
     }
   }
+}
+
+.pay-hint {
+  margin-top: 16rpx;
+  font-size: 22rpx;
+  color: #86909c;
+  line-height: 1.6;
+  padding: 0 16rpx;
 }
 
 .complete {

@@ -78,6 +78,11 @@ export interface OrderVO {
   remark?: string
   cancelBy?: string
   cancelReason?: string
+  /** 打款方式:OFFLINE/WX_TRANSFER/ALIPAY_TRANSFER/WALLET */
+  payMethod?: string
+  /** 打款状态:SUCCESS/PROCESSING/WAIT_USER_CONFIRM/FAILED */
+  payoutStatus?: string
+  paidAt?: string
   timeline?: OrderTimelineVO[]
   createdAt?: string
   createTime?: string

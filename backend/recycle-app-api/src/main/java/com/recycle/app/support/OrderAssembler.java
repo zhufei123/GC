@@ -3,11 +3,13 @@ package com.recycle.app.support;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.recycle.app.vo.OrderItemVO;
 import com.recycle.app.vo.OrderVO;
+import com.recycle.common.entity.store.RecycleStation;
 import com.recycle.common.entity.trade.OrderItem;
 import com.recycle.common.entity.trade.PayoutOrder;
 import com.recycle.common.entity.trade.RecycleOrder;
 import com.recycle.common.mapper.OrderItemMapper;
 import com.recycle.common.mapper.PayoutOrderMapper;
+import com.recycle.common.mapper.RecycleStationMapper;
 import com.recycle.common.util.JsonUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -24,6 +26,7 @@ public class OrderAssembler {
 
     private final OrderItemMapper orderItemMapper;
     private final PayoutOrderMapper payoutOrderMapper;
+    private final RecycleStationMapper stationMapper;
 
     public OrderVO toVO(RecycleOrder order, boolean withItems, boolean maskPhone) {
         OrderVO vo = new OrderVO();
@@ -56,6 +59,12 @@ public class OrderAssembler {
         vo.setWeighedAt(order.getWeighedAt());
         vo.setCompletedAt(order.getCompletedAt());
         vo.setCancelledAt(order.getCancelledAt());
+        if (order.getStationId() != null) {
+            RecycleStation station = stationMapper.selectById(order.getStationId());
+            if (station != null) {
+                vo.setStationName(station.getName());
+            }
+        }
         if (withItems) {
             List<OrderItem> items = orderItemMapper.selectList(new LambdaQueryWrapper<OrderItem>()
                     .eq(OrderItem::getOrderId, order.getId()));

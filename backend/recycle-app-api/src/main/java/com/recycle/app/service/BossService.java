@@ -149,7 +149,7 @@ public class BossService {
         }
         RecycleOrder accepted = orderMapper.selectById(orderId);
         if (accepted != null) {
-            notifyService.inAppQuietly(accepted.getUserId(), "ORDER_ACCEPTED", "订单已接单",
+            notifyService.notifyUserQuietly(accepted.getUserId(), "ORDER_ACCEPTED", "订单已接单",
                     "「" + station.getName() + "」已接单 " + accepted.getOrderNo()
                             + "，将按预约时间为您服务", "ORDER", orderId);
         }
@@ -168,7 +168,7 @@ public class BossService {
         if (rows == 0) {
             throw new BizException(ErrorCode.ORDER_STATUS_ILLEGAL);
         }
-        notifyService.inAppQuietly(order.getUserId(), "ORDER_SERVING", "服务已开始",
+        notifyService.notifyUserQuietly(order.getUserId(), "ORDER_SERVING", "服务已开始",
                 "订单 " + order.getOrderNo() + " 回收员已开始上门服务", "ORDER", orderId);
     }
 
@@ -227,7 +227,7 @@ public class BossService {
         if (rows == 0) {
             throw new BizException(ErrorCode.ORDER_STATUS_ILLEGAL);
         }
-        notifyService.inAppQuietly(order.getUserId(), "ORDER_WEIGHED", "称重完成",
+        notifyService.notifyUserQuietly(order.getUserId(), "ORDER_WEIGHED", "称重完成",
                 "订单 " + order.getOrderNo() + " 称重完成，实收金额 ¥" + total, "ORDER", orderId);
         return total;
     }
@@ -262,7 +262,7 @@ public class BossService {
         if (rows == 0) {
             throw new BizException(ErrorCode.ORDER_STATUS_ILLEGAL);
         }
-        notifyService.inAppQuietly(order.getUserId(), "ORDER_COMPLETED", "订单已完成",
+        notifyService.notifyUserQuietly(order.getUserId(), "ORDER_COMPLETED", "订单已完成",
                 "订单 " + order.getOrderNo() + " 已完成，" + payMethodLabel(payMethod)
                         + "打款 ¥" + order.getActualAmount(), "ORDER", orderId);
     }

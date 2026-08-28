@@ -106,6 +106,19 @@ export function getStorePrices(id: string) {
   return get<StorePriceItem[]>(`/app-api/store/${id}/prices`, undefined, { silent: true });
 }
 
+/** 门店评价条目(昵称已由后端脱敏) */
+export interface StoreReviewItem {
+  id?: string;
+  rating: number;
+  comment?: string;
+  nickname?: string;
+  createTime?: string;
+}
+
+export function getStoreReviews(id: string) {
+  return get<StoreReviewItem[]>(`/app-api/store/${id}/reviews`, undefined, { silent: true });
+}
+
 export async function getSkuQuotes(
   skuId: string,
   longitude: number,

@@ -21,12 +21,27 @@ app:
     # 小程序登录（appid+secret 同时非空才走真实 jscode2session，否则 code 即 openid）
     appid: ""
     secret: ""
-    # 商家转账（mch-id+api-v3-key，mock=false 且已配置才走真实转账）
+    # 商家转账（mock=false 时需 mch-id + api-v3-key + mch-serial-no）
     mch-id: ""
     api-v3-key: ""
-    # mock=true：微信打款进程内直接成功（WAIT_USER_CONFIRM → SUCCESS），不发起外部 HTTP
+    mch-serial-no: ""
+    private-key-pem: ""
+    notify-url: ""
+    # mock=true：微信打款落 WAIT_USER_CONFIRM，等 C 端确认收款，不发起外部 HTTP
     mock: true
+    subscribe-templates:
+      ORDER_ACCEPTED: ""
+      ORDER_WEIGHED: ""
+      ORDER_COMPLETED: ""
   alipay:
     app-id: ""
+    private-key: ""
+    alipay-public-key: ""
+    gateway: https://openapi.alipay.com/gateway.do
+    encrypt-key: ""
     # mock=true：支付宝打款进程内直接成功
     mock: true
+    message-templates:
+      ORDER_ACCEPTED: ""
+      ORDER_WEIGHED: ""
+      ORDER_COMPLETED: ""

@@ -3,7 +3,10 @@
     <view class="wallet__card">
       <view class="wallet__label">钱包余额（元）</view>
       <view class="wallet__balance">{{ balance }}</view>
-      <view class="wallet__hint">回收订单选择「平台钱包」打款后自动入账</view>
+      <view class="wallet__bottom">
+        <view class="wallet__hint">回收订单选择「平台钱包」打款后自动入账</view>
+        <view class="wallet__withdraw" @tap="onWithdraw">提现</view>
+      </view>
     </view>
 
     <view class="ledger">
@@ -31,11 +34,46 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
-import { getWallet, type WalletLedgerItem } from "@/api/user";
+import { getWallet, withdrawWallet, type WalletLedgerItem } from "@/api/user";
 
 const balance = ref("0.00");
 const list = ref<WalletLedgerItem[]>([]);
 const loading = ref(true);
+let withdrawing = false;
+
+function onWithdraw() {
+  if (parseFloat(balance.value || "0") <= 0) {
+    uni.showToast({ title: "余额不足", icon: "none" });
+    return;
+  }
+  uni.showModal({
+    title: "余额提现",
+    editable: true,
+    placeholderText: `可提现 ¥${balance.value}`,
+    success: async (res) => {
+      if (!res.confirm || withdrawing) return;
+      const amount = parseFloat(((res as any).content || "").trim());
+      if (!amount || amount <= 0 || Number.isNaN(amount)) {
+        uni.showToast({ title: "请输入正确的提现金额", icon: "none" });
+        return;
+      }
+      if (amount > parseFloat(balance.value || "0")) {
+        uni.showToast({ title: "提现金额超出余额", icon: "none" });
+        return;
+      }
+      withdrawing = true;
+      try {
+        await withdrawWallet(amount.toFixed(2));
+        uni.showToast({ title: "提现申请已提交", icon: "success" });
+        load();
+      } catch (e) {
+        /* 错误提示已由 request 统一处理 */
+      } finally {
+        withdrawing = false;
+      }
+    },
+  });
+}
 
 function isOut(item: WalletLedgerItem) {
   return parseFloat(item.amount || "0") < 0;
@@ -81,10 +119,27 @@ onShow(load);
     color: #fff;
   }
 
-  &__hint {
+  &__bottom {
     margin-top: 16rpx;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20rpx;
+  }
+
+  &__hint {
     font-size: 22rpx;
     color: rgba(255, 255, 255, 0.75);
+  }
+
+  &__withdraw {
+    flex-shrink: 0;
+    background: #fff;
+    color: $theme-color;
+    font-size: 26rpx;
+    font-weight: 600;
+    padding: 12rpx 36rpx;
+    border-radius: 32rpx;
   }
 
   &__loading {

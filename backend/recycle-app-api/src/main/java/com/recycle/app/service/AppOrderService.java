@@ -13,6 +13,7 @@ import com.recycle.common.core.BizException;
 import com.recycle.common.core.ErrorCode;
 import com.recycle.common.core.PageQuery;
 import com.recycle.common.core.PageResult;
+import com.recycle.common.entity.member.User;
 import com.recycle.common.entity.member.UserAddress;
 import com.recycle.common.entity.recycle.Sku;
 import com.recycle.common.entity.store.RecycleStation;
@@ -25,6 +26,7 @@ import com.recycle.common.mapper.RecycleOrderMapper;
 import com.recycle.common.mapper.RecycleStationMapper;
 import com.recycle.common.mapper.SkuMapper;
 import com.recycle.common.mapper.UserAddressMapper;
+import com.recycle.common.mapper.UserMapper;
 import com.recycle.common.support.StationPriceReader;
 import com.recycle.common.util.JsonUtils;
 import com.recycle.common.util.QueryParams;
@@ -57,6 +59,7 @@ public class AppOrderService {
     private final OrderItemMapper orderItemMapper;
     private final OrderReviewMapper orderReviewMapper;
     private final UserAddressMapper addressMapper;
+    private final UserMapper userMapper;
     private final RecycleStationMapper stationMapper;
     private final SkuMapper skuMapper;
     private final StationPriceReader stationPriceReader;
@@ -65,6 +68,10 @@ public class AppOrderService {
 
     @Transactional
     public Long create(Long userId, OrderCreateDTO dto) {
+        User user = userMapper.selectById(userId);
+        if (user == null || !StringUtils.hasText(user.getPhone())) {
+            throw new BizException(ErrorCode.PARAM_ERROR, "请先绑定手机号");
+        }
         // requestId 幂等：仅对本用户生效
         if (StringUtils.hasText(dto.getRequestId())) {
             RecycleOrder existing = orderMapper.selectOne(new LambdaQueryWrapper<RecycleOrder>()
@@ -185,7 +192,7 @@ public class AppOrderService {
             item.setOrderId(order.getId());
             orderItemMapper.insert(item);
         }
-        notifyService.inAppQuietly(userId, "ORDER_CREATED", "预约成功",
+        notifyService.notifyUserQuietly(userId, "ORDER_CREATED", "预约成功",
                 "回收订单 " + order.getOrderNo() + " 已提交，等待回收站接单", "ORDER", order.getId());
         return order.getId();
     }
@@ -220,7 +227,7 @@ public class AppOrderService {
         if (rows == 0) {
             throw new BizException(ErrorCode.ORDER_STATUS_ILLEGAL);
         }
-        notifyService.inAppQuietly(userId, "ORDER_CANCELLED", "订单已取消",
+        notifyService.notifyUserQuietly(userId, "ORDER_CANCELLED", "订单已取消",
                 "订单 " + order.getOrderNo() + " 已取消", "ORDER", orderId);
     }
 

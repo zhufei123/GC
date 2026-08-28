@@ -3,11 +3,15 @@ package com.recycle.app.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.recycle.app.dto.AlipayLoginDTO;
+import com.recycle.app.dto.BindPhoneAlipayDTO;
 import com.recycle.app.dto.BindPhoneDTO;
+import com.recycle.app.dto.BindPhoneWxDTO;
 import com.recycle.app.dto.PhoneLoginDTO;
 import com.recycle.app.dto.SmsCodeDTO;
 import com.recycle.app.dto.WxLoginDTO;
+import com.recycle.app.pay.AlipayOauthClient;
 import com.recycle.app.pay.AlipayPayProperties;
+import com.recycle.app.pay.WxApiClient;
 import com.recycle.app.pay.WxPayProperties;
 import com.recycle.app.vo.AppLoginVO;
 import com.recycle.common.core.BizException;
@@ -27,8 +31,13 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
 
+import javax.crypto.Cipher;
+import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Base64;
 import java.util.Map;
 
 @Slf4j
@@ -39,6 +48,9 @@ public class AppAuthService {
     private static final String SMS_CODE_KEY = "recycle:sms:code:";
     private static final String SMS_LIMIT_KEY = "recycle:sms:limit:";
     private static final String MOCK_CODE = "123456";
+    /** H5 联调专用 mock code，真实配置下必须拒绝 */
+    private static final String H5_MOCK_WX_CODE = "h5-mock-wx";
+    private static final String H5_MOCK_ALIPAY_CODE = "h5-mock-alipay";
     private static final String WX_CODE2SESSION_URL =
             "https://api.weixin.qq.com/sns/jscode2session?appid={appid}&secret={secret}&js_code={code}&grant_type=authorization_code";
 
@@ -47,6 +59,8 @@ public class AppAuthService {
     private final StringRedisTemplate redisTemplate;
     private final WxPayProperties wxProps;
     private final AlipayPayProperties alipayProps;
+    private final WxApiClient wxApiClient;
+    private final AlipayOauthClient alipayOauthClient;
     private final RestClient restClient = RestClient.create();
 
     @Value("${app.sms.mock:true}")
@@ -67,29 +81,18 @@ public class AppAuthService {
         verifySmsCode(dto.getPhone(), dto.getSmsCode());
         boolean boss = "boss".equalsIgnoreCase(dto.getClient());
         User user = userMapper.selectOne(new LambdaQueryWrapper<User>().eq(User::getPhone, dto.getPhone()));
-        if (boss) {
-            if (user == null || !"recycler".equals(user.getRole())) {
-                throw new BizException(ErrorCode.NOT_BOSS);
-            }
-            checkEnabled(user);
-            StpKit.BOSS.login(user.getId());
-            AppLoginVO vo = buildLoginVO(user, StpKit.BOSS.getTokenValue());
-            RecycleStation station = stationMapper.selectOne(
-                    new LambdaQueryWrapper<RecycleStation>().eq(RecycleStation::getOwnerUserId, user.getId()));
-            if (station != null) {
-                vo.setStoreId(station.getId());
-            }
-            return vo;
-        }
         boolean isNew = false;
         if (user == null) {
+            if (boss) {
+                throw new BizException(ErrorCode.NOT_BOSS);
+            }
             user = registerCustomer(dto.getPhone());
             isNew = true;
         }
-        checkEnabled(user);
-        StpKit.USER.login(user.getId());
-        AppLoginVO vo = buildLoginVO(user, StpKit.USER.getTokenValue());
-        vo.setIsNewUser(isNew);
+        AppLoginVO vo = loginAs(user, dto.getClient());
+        if (!boss) {
+            vo.setIsNewUser(isNew);
+        }
         return vo;
     }
 
@@ -97,6 +100,9 @@ public class AppAuthService {
         String openid;
         String unionid = null;
         if (wxProps.loginConfigured()) {
+            if (H5_MOCK_WX_CODE.equals(dto.getCode())) {
+                throw new BizException(ErrorCode.PARAM_ERROR, "已配置微信登录，禁止 mock code");
+            }
             Map<String, Object> session = jscode2session(dto.getCode());
             openid = (String) session.get("openid");
             unionid = (String) session.get("unionid");
@@ -104,9 +110,13 @@ public class AppAuthService {
             // 未配置 appid+secret：mock 模式，code 即 openid（H5 联调）
             openid = dto.getCode();
         }
+        boolean boss = "boss".equalsIgnoreCase(dto.getClient());
         User user = userMapper.selectOne(new LambdaQueryWrapper<User>().eq(User::getOpenidWx, openid));
         boolean isNew = false;
         if (user == null) {
+            if (boss) {
+                throw new BizException(ErrorCode.NOT_BOSS);
+            }
             user = new User();
             user.setOpenidWx(openid);
             user.setUnionidWx(unionid);
@@ -121,10 +131,10 @@ public class AppAuthService {
             user.setUnionidWx(unionid);
             userMapper.updateById(user);
         }
-        checkEnabled(user);
-        StpKit.USER.login(user.getId());
-        AppLoginVO vo = buildLoginVO(user, StpKit.USER.getTokenValue());
-        vo.setIsNewUser(isNew);
+        AppLoginVO vo = loginAs(user, dto.getClient());
+        if (!boss) {
+            vo.setIsNewUser(isNew);
+        }
         return vo;
     }
 
@@ -152,12 +162,23 @@ public class AppAuthService {
     }
 
     public AppLoginVO alipayLogin(AlipayLoginDTO dto) {
-        // mock：authCode 即 openidAlipay。app.alipay.app-id 已配置时，正式接入应在此调用
-        // alipay.system.oauth.token 以 authCode 换取支付宝 user_id 作为 openid（推荐 alipay-sdk-java）。
-        String openid = dto.getAuthCode();
+        String openid;
+        if (alipayProps.oauthConfigured()) {
+            if (H5_MOCK_ALIPAY_CODE.equals(dto.getAuthCode())) {
+                throw new BizException(ErrorCode.PARAM_ERROR, "已配置支付宝登录，禁止 mock authCode");
+            }
+            openid = alipayOauthClient.oauthToken(dto.getAuthCode());
+        } else {
+            // 未配置 appId+私钥：mock 模式，authCode 即 openidAlipay（H5 联调）
+            openid = dto.getAuthCode();
+        }
+        boolean boss = "boss".equalsIgnoreCase(dto.getClient());
         User user = userMapper.selectOne(new LambdaQueryWrapper<User>().eq(User::getOpenidAlipay, openid));
         boolean isNew = false;
         if (user == null) {
+            if (boss) {
+                throw new BizException(ErrorCode.NOT_BOSS);
+            }
             user = new User();
             user.setOpenidAlipay(openid);
             user.setNickname("支付宝用户" + openid.substring(Math.max(0, openid.length() - 4)));
@@ -168,37 +189,115 @@ public class AppAuthService {
             userMapper.insert(user);
             isNew = true;
         }
-        checkEnabled(user);
-        StpKit.USER.login(user.getId());
-        AppLoginVO vo = buildLoginVO(user, StpKit.USER.getTokenValue());
-        vo.setIsNewUser(isNew);
+        AppLoginVO vo = loginAs(user, dto.getClient());
+        if (!boss) {
+            vo.setIsNewUser(isNew);
+        }
         return vo;
     }
 
-    /**
-     * 三方登录后补绑手机号：验证码校验通过后设置手机号；
-     * 手机号已注册时合并账号——openid 挪到手机号账号并改登该账号，临时 openid 账号逻辑删除。
-     */
+    /** 统一登录：boss 端要求 recycler 身份并返回 storeId，否则登 USER 端 */
+    private AppLoginVO loginAs(User user, String client) {
+        checkEnabled(user);
+        if ("boss".equalsIgnoreCase(client)) {
+            if (!"recycler".equals(user.getRole())) {
+                throw new BizException(ErrorCode.NOT_BOSS);
+            }
+            StpKit.BOSS.login(user.getId());
+            AppLoginVO vo = buildLoginVO(user, StpKit.BOSS.getTokenValue());
+            RecycleStation station = stationMapper.selectOne(
+                    new LambdaQueryWrapper<RecycleStation>().eq(RecycleStation::getOwnerUserId, user.getId()));
+            if (station != null) {
+                vo.setStoreId(station.getId());
+            }
+            return vo;
+        }
+        StpKit.USER.login(user.getId());
+        return buildLoginVO(user, StpKit.USER.getTokenValue());
+    }
+
+    /** 三方登录后补绑手机号（短信验证码通道） */
     @Transactional
     public AppLoginVO bindPhone(Long userId, BindPhoneDTO dto) {
         verifySmsCode(dto.getPhone(), dto.getSmsCode());
+        return bindVerifiedPhone(userId, dto.getPhone());
+    }
+
+    /** 微信手机号快速验证通道：code 换手机号后绑定（未配置 appid+secret 时提示走短信） */
+    @Transactional
+    public AppLoginVO bindPhoneWx(Long userId, BindPhoneWxDTO dto) {
+        String phone = wxApiClient.getPhoneNumber(dto.getCode());
+        return bindVerifiedPhone(userId, phone);
+    }
+
+    /** 支付宝加密手机号通道：encryptKey 解密后绑定（未配置时提示走短信） */
+    @Transactional
+    public AppLoginVO bindPhoneAlipay(Long userId, BindPhoneAlipayDTO dto) {
+        if (!alipayProps.oauthConfigured()) {
+            throw new BizException(ErrorCode.PARAM_ERROR, "当前为开发 mock，请用短信绑定手机号");
+        }
+        if (!StringUtils.hasText(alipayProps.getEncryptKey())) {
+            throw new BizException(ErrorCode.PARAM_ERROR, "未配置解密密钥，请用短信绑定手机号");
+        }
+        if (!StringUtils.hasText(dto.getEncryptedData())) {
+            throw new BizException(ErrorCode.PARAM_ERROR, "encryptedData 不能为空");
+        }
+        String phone = decryptAlipayPhone(dto.getEncryptedData());
+        return bindVerifiedPhone(userId, phone);
+    }
+
+    /** 支付宝小程序加密数据：AES/CBC（密钥 base64，IV 全零），明文 JSON 的 mobile 字段 */
+    private String decryptAlipayPhone(String encryptedData) {
+        String plain;
+        try {
+            Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+            cipher.init(Cipher.DECRYPT_MODE,
+                    new SecretKeySpec(Base64.getDecoder().decode(alipayProps.getEncryptKey()), "AES"),
+                    new IvParameterSpec(new byte[16]));
+            plain = new String(cipher.doFinal(Base64.getDecoder().decode(encryptedData)), StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            log.warn("[alipay-bind] decrypt phone failed", e);
+            throw new BizException(ErrorCode.PARAM_ERROR, "解密支付宝手机号失败");
+        }
+        Map<String, Object> result = JsonUtils.toMap(plain);
+        Object mobile = result.get("mobile");
+        if (mobile == null || !StringUtils.hasText(mobile.toString())) {
+            throw new BizException(ErrorCode.PARAM_ERROR, "解密支付宝手机号失败");
+        }
+        return mobile.toString();
+    }
+
+    /**
+     * 手机号已验证后绑定：号码已注册时合并账号——openid 挪到手机号账号并改登该账号，
+     * 临时 openid 账号逻辑删除；双方同渠道 openid 冲突时拒绝，不静默丢弃三方身份。
+     */
+    @Transactional
+    public AppLoginVO bindVerifiedPhone(Long userId, String phone) {
         User current = userMapper.selectById(userId);
         if (current == null) {
             throw new BizException(ErrorCode.USER_NOT_FOUND);
         }
         if (StringUtils.hasText(current.getPhone())) {
-            if (current.getPhone().equals(dto.getPhone())) {
+            if (current.getPhone().equals(phone)) {
                 return buildLoginVO(current, StpKit.USER.getTokenValue());
             }
             throw new BizException(ErrorCode.PARAM_ERROR, "当前账号已绑定手机号");
         }
-        User existing = userMapper.selectOne(new LambdaQueryWrapper<User>().eq(User::getPhone, dto.getPhone()));
+        User existing = userMapper.selectOne(new LambdaQueryWrapper<User>().eq(User::getPhone, phone));
         if (existing == null) {
-            current.setPhone(dto.getPhone());
+            current.setPhone(phone);
             userMapper.updateById(current);
             return buildLoginVO(current, StpKit.USER.getTokenValue());
         }
         checkEnabled(existing);
+        if (StringUtils.hasText(current.getOpenidWx()) && StringUtils.hasText(existing.getOpenidWx())
+                && !existing.getOpenidWx().equals(current.getOpenidWx())) {
+            throw new BizException(ErrorCode.PARAM_ERROR, "该手机号已绑定其他微信账号");
+        }
+        if (StringUtils.hasText(current.getOpenidAlipay()) && StringUtils.hasText(existing.getOpenidAlipay())
+                && !existing.getOpenidAlipay().equals(current.getOpenidAlipay())) {
+            throw new BizException(ErrorCode.PARAM_ERROR, "该手机号已绑定其他支付宝账号");
+        }
         // 先清空临时账号 openid（openid_wx/openid_alipay 唯一键），再挂到手机号账号
         userMapper.update(null, new LambdaUpdateWrapper<User>()
                 .eq(User::getId, current.getId())

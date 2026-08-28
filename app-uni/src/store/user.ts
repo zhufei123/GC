@@ -25,6 +25,8 @@ export const useUserStore = defineStore("user", {
     recyclerStatus: "none" as RecyclerStatus,
     nickname: "",
     storeId: "" as string | null,
+    /** 三方登录未绑手机号时为 false，下单等场景需先补绑 */
+    hasPhone: true,
   }),
   getters: {
     isLogin(state): boolean {
@@ -45,10 +47,16 @@ export const useUserStore = defineStore("user", {
       this.recyclerStatus = (data.recyclerStatus as RecyclerStatus) || "none";
       this.nickname = data.nickname || "";
       this.storeId = data.storeId ? String(data.storeId) : "";
+      // 手机号登录/补绑后不返回 hasPhone 字段，视为已绑定
+      this.hasPhone = data.hasPhone !== false;
       this.persist();
     },
     setRecyclerStatus(status: RecyclerStatus) {
       this.recyclerStatus = status;
+      this.persist();
+    },
+    setHasPhone(hasPhone: boolean) {
+      this.hasPhone = hasPhone;
       this.persist();
     },
     persist() {
@@ -61,6 +69,7 @@ export const useUserStore = defineStore("user", {
           recyclerStatus: this.recyclerStatus,
           nickname: this.nickname,
           storeId: this.storeId,
+          hasPhone: this.hasPhone,
         })
       );
     },
@@ -75,6 +84,7 @@ export const useUserStore = defineStore("user", {
           this.recyclerStatus = data.recyclerStatus || "none";
           this.nickname = data.nickname || "";
           this.storeId = data.storeId || "";
+          this.hasPhone = data.hasPhone !== false;
         }
       } catch (e) {
         /* 忽略脏数据 */
@@ -87,6 +97,7 @@ export const useUserStore = defineStore("user", {
       this.recyclerStatus = "none";
       this.nickname = "";
       this.storeId = "";
+      this.hasPhone = true;
       uni.removeStorageSync(STORAGE_KEY);
     },
   },

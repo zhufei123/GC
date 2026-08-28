@@ -7,6 +7,7 @@ import com.recycle.app.dto.AddressDTO;
 import com.recycle.app.dto.ProfileDTO;
 import com.recycle.app.vo.FavoriteStationVO;
 import com.recycle.app.vo.UserMeVO;
+import com.recycle.app.vo.UserStatsVO;
 import com.recycle.app.vo.WalletVO;
 import com.recycle.common.core.BizException;
 import com.recycle.common.core.ErrorCode;
@@ -18,7 +19,11 @@ import com.recycle.common.entity.member.UserAddress;
 import com.recycle.common.entity.member.UserFavoriteStation;
 import com.recycle.common.entity.member.WalletLedger;
 import com.recycle.common.entity.store.RecycleStation;
+import com.recycle.common.entity.trade.OrderItem;
+import com.recycle.common.entity.trade.RecycleOrder;
 import com.recycle.common.mapper.NotifyLogMapper;
+import com.recycle.common.mapper.OrderItemMapper;
+import com.recycle.common.mapper.RecycleOrderMapper;
 import com.recycle.common.mapper.RecycleStationMapper;
 import com.recycle.common.mapper.UserAddressMapper;
 import com.recycle.common.mapper.UserFavoriteStationMapper;
@@ -32,6 +37,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -41,12 +48,17 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AppUserService {
 
+    /** 每回收 1kg 估算减碳 0.8kg */
+    private static final BigDecimal CO2_PER_KG = new BigDecimal("0.8");
+
     private final UserMapper userMapper;
     private final UserAddressMapper addressMapper;
     private final RecycleStationMapper stationMapper;
     private final UserFavoriteStationMapper favoriteMapper;
     private final WalletLedgerMapper walletLedgerMapper;
     private final NotifyLogMapper notifyLogMapper;
+    private final RecycleOrderMapper orderMapper;
+    private final OrderItemMapper orderItemMapper;
 
     public UserMeVO me(Long userId) {
         User user = userMapper.selectById(userId);
@@ -108,6 +120,66 @@ public class AppUserService {
                         .eq(NotifyLog::getUserId, userId)
                         .orderByDesc(NotifyLog::getId));
         return PageResult.of(page);
+    }
+
+    public long unreadNoticeCount(Long userId) {
+        return notifyLogMapper.selectCount(new LambdaQueryWrapper<NotifyLog>()
+                .eq(NotifyLog::getUserId, userId)
+                .isNull(NotifyLog::getReadAt));
+    }
+
+    public void readAllNotices(Long userId) {
+        notifyLogMapper.update(null, new LambdaUpdateWrapper<NotifyLog>()
+                .eq(NotifyLog::getUserId, userId)
+                .isNull(NotifyLog::getReadAt)
+                .set(NotifyLog::getReadAt, LocalDateTime.now()));
+    }
+
+    /** 回收成就：完成单数/总重量/总金额/减碳量 */
+    public UserStatsVO stats(Long userId) {
+        List<RecycleOrder> completed = orderMapper.selectList(new LambdaQueryWrapper<RecycleOrder>()
+                .eq(RecycleOrder::getUserId, userId)
+                .eq(RecycleOrder::getStatus, "COMPLETED"));
+        UserStatsVO vo = new UserStatsVO();
+        vo.setCompletedOrders((long) completed.size());
+        BigDecimal totalAmount = completed.stream()
+                .map(RecycleOrder::getActualAmount)
+                .filter(a -> a != null)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        vo.setTotalAmount(totalAmount);
+        BigDecimal totalWeight = BigDecimal.ZERO;
+        if (!completed.isEmpty()) {
+            totalWeight = orderItemMapper.selectList(new LambdaQueryWrapper<OrderItem>()
+                            .in(OrderItem::getOrderId, completed.stream().map(RecycleOrder::getId).toList())
+                            .eq(OrderItem::getItemType, "ACTUAL"))
+                    .stream().map(OrderItem::getWeight)
+                    .filter(w -> w != null)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+        }
+        vo.setTotalWeightKg(totalWeight);
+        vo.setCo2SavedKg(totalWeight.multiply(CO2_PER_KG).setScale(2, RoundingMode.HALF_UP));
+        return vo;
+    }
+
+    /** 钱包提现（mock：立即成功，不调渠道）：原子扣减余额 + 负数流水 */
+    @Transactional
+    public void withdraw(Long userId, BigDecimal amount) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BizException(ErrorCode.PARAM_ERROR, "提现金额必须大于 0");
+        }
+        int rows = userMapper.update(null, new LambdaUpdateWrapper<User>()
+                .eq(User::getId, userId)
+                .apply("balance >= {0}", amount)
+                .setSql("balance = balance - {0}", amount));
+        if (rows == 0) {
+            throw new BizException(ErrorCode.PARAM_ERROR, "余额不足");
+        }
+        WalletLedger ledger = new WalletLedger();
+        ledger.setUserId(userId);
+        ledger.setAmount(amount.negate());
+        ledger.setBizType("WITHDRAW");
+        ledger.setRemark("钱包提现");
+        walletLedgerMapper.insert(ledger);
     }
 
     public List<UserAddress> listAddress(Long userId) {

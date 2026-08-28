@@ -97,6 +97,22 @@
           <wd-status-tip v-if="!prices.length" image="content" tip="暂无价目信息" />
         </template>
       </view>
+
+      <!-- 用户评价 -->
+      <view class="card">
+        <view class="card__title">用户评价</view>
+        <template v-if="reviews.length">
+          <view v-for="(r, ri) in reviews" :key="r.id || ri" class="review-row">
+            <view class="review-row__head">
+              <wd-rate :model-value="r.rating" readonly size="14px" active-color="#ff8f1f" />
+              <text class="review-row__nick">{{ maskNickname(r.nickname) }}</text>
+              <text class="review-row__time">{{ r.createTime || "" }}</text>
+            </view>
+            <view v-if="r.comment" class="review-row__comment">{{ r.comment }}</view>
+          </view>
+        </template>
+        <view v-else class="review-empty">暂无评价</view>
+      </view>
     </template>
 
     <wd-status-tip v-else image="search" tip="回收站不存在或已下线" />
@@ -119,13 +135,14 @@ import { onLoad } from "@dcloudio/uni-app";
 import {
   getStoreDetail,
   getStorePrices,
+  getStoreReviews,
   getCachedStore,
   resolveUserLocation,
   isStationFavorite,
   favoriteStation,
   unfavoriteStation,
 } from "@/api/store";
-import type { StoreItem, StorePriceItem } from "@/api/store";
+import type { StoreItem, StorePriceItem, StoreReviewItem } from "@/api/store";
 import { getSkuList } from "@/api/goods";
 import { openNavigation } from "@/utils/map-nav";
 import { useUserStore } from "@/store/user";
@@ -133,6 +150,7 @@ import { useUserStore } from "@/store/user";
 const userStore = useUserStore();
 const store = ref<StoreItem | null>(null);
 const prices = ref<StorePriceItem[]>([]);
+const reviews = ref<StoreReviewItem[]>([]);
 const priceIsGuide = ref(false);
 const loading = ref(true);
 const priceLoading = ref(true);
@@ -209,6 +227,23 @@ async function loadPrices(id: string) {
   }
 }
 
+/** 兜底脱敏：后端已脱敏时原样展示 */
+function maskNickname(nick?: string) {
+  const n = (nick || "").trim();
+  if (!n) return "匿名用户";
+  if (n.includes("*")) return n;
+  if (n.length <= 1) return `${n}**`;
+  return `${n[0]}**${n[n.length - 1]}`;
+}
+
+async function loadReviews(id: string) {
+  try {
+    reviews.value = (await getStoreReviews(id)) || [];
+  } catch (e) {
+    reviews.value = [];
+  }
+}
+
 /** 未登录不查收藏态，避免触发 40100 被踢去登录页 */
 async function loadFavorite(id: string) {
   if (!userStore.isLogin) return;
@@ -279,6 +314,7 @@ onLoad((options) => {
   storeId = id;
   loadStore(id);
   loadPrices(id);
+  loadReviews(id);
   loadFavorite(id);
 });
 </script>
@@ -471,6 +507,47 @@ onLoad((options) => {
     font-size: 20rpx;
     color: #86909c;
   }
+}
+
+.review-row {
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #f7f8fa;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &__head {
+    display: flex;
+    align-items: center;
+    gap: 16rpx;
+  }
+
+  &__nick {
+    font-size: 24rpx;
+    color: #4e5969;
+    font-weight: 600;
+  }
+
+  &__time {
+    margin-left: auto;
+    font-size: 22rpx;
+    color: #c0c4cc;
+  }
+
+  &__comment {
+    margin-top: 12rpx;
+    font-size: 26rpx;
+    color: #4e5969;
+    line-height: 1.6;
+  }
+}
+
+.review-empty {
+  text-align: center;
+  color: #c0c4cc;
+  font-size: 24rpx;
+  padding: 24rpx 0;
 }
 
 .footer {

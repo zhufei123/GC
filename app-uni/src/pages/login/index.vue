@@ -13,6 +13,33 @@
         <wd-icon name="mobile" size="32rpx" color="#07c160" />
         <text>登录成功，请绑定手机号（已注册号码将自动合并账号）</text>
       </view>
+
+      <!-- 小程序原生手机号快捷绑定 -->
+      <view v-if="bindMode" class="quick-bind">
+        <!-- #ifdef MP-WEIXIN -->
+        <button
+          class="quick-bind__btn"
+          open-type="getPhoneNumber"
+          @getphonenumber="onWxPhoneNumber"
+        >
+          微信手机号快捷绑定
+        </button>
+        <!-- #endif -->
+        <!-- #ifdef MP-ALIPAY -->
+        <button
+          class="quick-bind__btn quick-bind__btn--alipay"
+          open-type="getAuthorize"
+          scope="phoneNumber"
+          @getAuthorize="onAlipayPhoneAuth"
+          @error="onAlipayPhoneAuthFail"
+        >
+          支付宝手机号快捷绑定
+        </button>
+        <!-- #endif -->
+        <!-- #ifdef MP-WEIXIN || MP-ALIPAY -->
+        <view class="quick-bind__divider">或使用短信验证码绑定</view>
+        <!-- #endif -->
+      </view>
       <view v-else class="role-switch">
         <view
           class="role-switch__item"
@@ -76,14 +103,20 @@
       </view>
 
       <view v-if="!bindMode" class="third-party">
+        <!-- #ifdef MP-WEIXIN || MP-ALIPAY || H5 -->
         <view class="third-party__divider">其他登录方式</view>
+        <!-- #endif -->
         <view class="third-party__btns">
+          <!-- #ifdef MP-WEIXIN || H5 -->
           <wd-button plain type="success" icon="chat" :loading="thirdLogging" @click="handleWxLogin">
             微信一键登录
           </wd-button>
+          <!-- #endif -->
+          <!-- #ifdef MP-ALIPAY || H5 -->
           <wd-button plain type="primary" icon="wallet" :loading="thirdLogging" @click="handleAlipayLogin">
             支付宝一键登录
           </wd-button>
+          <!-- #endif -->
         </view>
       </view>
 
@@ -107,14 +140,20 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
+import { onLoad } from "@dcloudio/uni-app";
 import {
   sendSmsCode,
   phoneLogin,
   wxLogin as apiWxLogin,
   alipayLogin as apiAlipayLogin,
   bindPhone as apiBindPhone,
+  bindPhoneWx as apiBindPhoneWx,
+  bindPhoneAlipay as apiBindPhoneAlipay,
 } from "@/api/auth";
 import { useUserStore, type LoginPayload } from "@/store/user";
+
+/** 支付宝小程序全局对象(仅 MP-ALIPAY 运行时存在) */
+declare const my: any;
 
 const userStore = useUserStore();
 
@@ -203,13 +242,13 @@ async function handleBindPhone() {
   }
 }
 
-/** 取 uni.login code；H5 或失败时返回空串由调用方回退 mock code */
+/** 取 uni.login code(支付宝返回 authCode)；失败返回空串由调用方处理 */
 function uniLoginCode(provider: "weixin" | "alipay"): Promise<string> {
   return new Promise((resolve) => {
     try {
       uni.login({
         provider,
-        success: (res: any) => resolve(res?.code || ""),
+        success: (res: any) => resolve(res?.code || res?.authCode || ""),
         fail: () => resolve(""),
       } as any);
     } catch (e) {
@@ -232,9 +271,17 @@ async function handleWxLogin() {
   if (thirdLogging.value) return;
   thirdLogging.value = true;
   try {
-    // H5 无小程序环境：uni.login 失败时回退 mock code（后端未配置 appid 时 code 即 openid）
-    const code = (await uniLoginCode("weixin")) || "h5-mock-wx";
-    afterThirdLogin(await apiWxLogin(code));
+    let code = await uniLoginCode("weixin");
+    // #ifdef H5
+    // H5 无小程序环境：回退 mock code（后端未配置 appid 时 code 即 openid）
+    if (!code) code = "h5-mock-wx";
+    // #endif
+    if (!code) {
+      // 真机小程序环境拿不到 code 说明微信登录异常，不能用 mock 冒充
+      uni.showToast({ title: "微信登录失败", icon: "none" });
+      return;
+    }
+    afterThirdLogin(await apiWxLogin(code, client.value));
   } catch (e) {
     /* 错误提示已由 request 统一处理 */
   } finally {
@@ -246,14 +293,82 @@ async function handleAlipayLogin() {
   if (thirdLogging.value) return;
   thirdLogging.value = true;
   try {
-    const authCode = (await uniLoginCode("alipay")) || "h5-mock-alipay";
-    afterThirdLogin(await apiAlipayLogin(authCode));
+    let authCode = await uniLoginCode("alipay");
+    // #ifdef H5
+    if (!authCode) authCode = "h5-mock-alipay";
+    // #endif
+    if (!authCode) {
+      uni.showToast({ title: "支付宝登录失败", icon: "none" });
+      return;
+    }
+    afterThirdLogin(await apiAlipayLogin(authCode, client.value));
   } catch (e) {
     /* 错误提示已由 request 统一处理 */
   } finally {
     thirdLogging.value = false;
   }
 }
+
+/** 微信原生手机号快捷绑定：button open-type=getPhoneNumber 回调 */
+async function onWxPhoneNumber(e: any) {
+  const code = e?.detail?.code;
+  if (!code) {
+    uni.showToast({ title: "未授权手机号，可用短信绑定", icon: "none" });
+    return;
+  }
+  logging.value = true;
+  try {
+    const data = await apiBindPhoneWx(code);
+    userStore.setLogin(data);
+    uni.reLaunch({ url: userStore.homePath });
+  } catch (err) {
+    /* 错误提示已由 request 统一处理，可继续用短信绑定 */
+  } finally {
+    logging.value = false;
+  }
+}
+
+/** 支付宝手机号授权成功后拉加密手机号并提交后端解密绑定；失败提示走短信 */
+function onAlipayPhoneAuth() {
+  // #ifdef MP-ALIPAY
+  try {
+    my.getPhoneNumber({
+      success: async (res: any) => {
+        // response 为加密原文(JSON 字符串)，由后端解密取号
+        const encryptedData =
+          typeof res?.response === "string" ? res.response : JSON.stringify(res?.response ?? "");
+        if (!encryptedData) {
+          uni.showToast({ title: "请用短信绑定", icon: "none" });
+          return;
+        }
+        try {
+          const data = await apiBindPhoneAlipay(encryptedData);
+          userStore.setLogin(data);
+          uni.reLaunch({ url: userStore.homePath });
+        } catch (err) {
+          uni.showToast({ title: "请用短信绑定", icon: "none" });
+        }
+      },
+      fail: () => {
+        uni.showToast({ title: "请用短信绑定", icon: "none" });
+      },
+    });
+  } catch (e) {
+    uni.showToast({ title: "请用短信绑定", icon: "none" });
+  }
+  // #endif
+}
+
+function onAlipayPhoneAuthFail() {
+  uni.showToast({ title: "未授权手机号，可用短信绑定", icon: "none" });
+}
+
+onLoad((options) => {
+  // 已登录但未绑手机号的场景(如下单被拦截)直接进入补绑模式
+  if (options?.bind === "1" && userStore.isLogin) {
+    bindMode.value = true;
+  }
+});
 </script>
 
 <style lang="scss" scoped>
@@ -420,5 +535,36 @@ async function handleAlipayLogin() {
   padding: 20rpx 24rpx;
   font-size: 25rpx;
   color: #1f2329;
+}
+
+.quick-bind {
+  margin-top: 28rpx;
+
+  &__btn {
+    width: 100%;
+    height: 88rpx;
+    line-height: 88rpx;
+    border-radius: 44rpx;
+    background: $theme-color;
+    color: #fff;
+    font-size: 30rpx;
+    font-weight: 600;
+    border: none;
+
+    &::after {
+      border: none;
+    }
+
+    &--alipay {
+      background: #4d80f0;
+    }
+  }
+
+  &__divider {
+    margin-top: 24rpx;
+    text-align: center;
+    font-size: 24rpx;
+    color: #c0c4cc;
+  }
 }
 </style>

@@ -10,6 +10,28 @@
         </view>
       </view>
 
+      <!-- 订单进度 -->
+      <view v-if="progressSteps.length" class="card">
+        <view class="card__title">订单进度</view>
+        <view class="progress">
+          <view
+            v-for="(s, i) in progressSteps"
+            :key="i"
+            class="progress__item"
+            :class="{ 'progress__item--done': s.done }"
+          >
+            <view class="progress__track">
+              <view class="progress__dot" />
+              <view v-if="i < progressSteps.length - 1" class="progress__line" />
+            </view>
+            <view class="progress__main">
+              <view class="progress__label">{{ s.label }}</view>
+              <view v-if="s.time" class="progress__time">{{ s.time }}</view>
+            </view>
+          </view>
+        </view>
+      </view>
+
       <!-- 地址 -->
       <view class="card">
         <view class="card__title">上门信息</view>
@@ -55,8 +77,11 @@
         </view>
       </view>
 
-      <!-- 打款信息（C2B：回收站付客户） -->
-      <view v-if="order.status === 'COMPLETED' && order.payMethod" class="card">
+      <!-- 打款信息（C2B：回收站付客户），完成或待确认收款时展示 -->
+      <view
+        v-if="order.payMethod && (order.status === 'COMPLETED' || order.payoutStatus === 'WAIT_USER_CONFIRM')"
+        class="card"
+      >
         <view class="card__title">打款信息</view>
         <view class="pay-row">
           <text class="pay-row__label">打款方式</text>
@@ -72,6 +97,21 @@
           <text class="pay-row__label">打款时间</text>
           <text>{{ order.paidAt }}</text>
         </view>
+        <template
+          v-if="order.payMethod === 'WX_TRANSFER' && order.payoutStatus === 'WAIT_USER_CONFIRM'"
+        >
+          <wd-button
+            type="primary"
+            block
+            size="large"
+            :loading="confirming"
+            custom-class="pay-confirm__btn"
+            @click="onConfirmPayout"
+          >
+            确认收款
+          </wd-button>
+          <view class="pay-confirm__hint">回收站已发起微信打款，确认后货款进入您的微信零钱</view>
+        </template>
       </view>
 
       <view v-if="photos.length" class="card">
@@ -140,6 +180,17 @@
       >
         取消订单
       </wd-button>
+
+      <wd-button
+        v-if="order.status === 'COMPLETED' || order.status === 'CANCELLED'"
+        type="primary"
+        plain
+        block
+        custom-class="detail__again"
+        @click="onOrderAgain"
+      >
+        再来一单
+      </wd-button>
     </view>
     <view v-else class="detail__loading"><wd-loading color="#07c160" /></view>
   </view>
@@ -148,9 +199,18 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
-import { getOrderDetail, cancelOrder, getOrderReview, submitOrderReview } from "@/api/order";
+import {
+  getOrderDetail,
+  cancelOrder,
+  getOrderReview,
+  submitOrderReview,
+  confirmWxPayout,
+} from "@/api/order";
 import type { OrderVO, OrderReviewVO } from "@/api/order";
 import { statusText, payMethodText, payoutStatusText } from "@/utils/order-status";
+
+/** 微信小程序全局对象(仅 MP-WEIXIN 运行时存在) */
+declare const wx: any;
 
 const RATING_TEXTS: Record<number, string> = {
   1: "很不满意",
@@ -202,6 +262,31 @@ const photos = computed<string[]>(() => [
   ...(order.value?.images || []),
   ...(order.value?.weighImages || []),
 ]);
+
+interface ProgressStep {
+  label: string;
+  time?: string;
+  done: boolean;
+}
+
+/** 订单进度节点：取消单只保留已发生节点 + 取消节点 */
+const progressSteps = computed<ProgressStep[]>(() => {
+  const o = order.value;
+  if (!o) return [];
+  const steps: ProgressStep[] = [
+    { label: "提交预约", time: o.createTime, done: true },
+    { label: "回收站接单", time: o.acceptedAt, done: !!o.acceptedAt },
+    { label: "上门服务", time: o.servedAt, done: !!o.servedAt },
+    { label: "现场称重", time: o.weighedAt, done: !!o.weighedAt },
+    { label: "订单完成", time: o.completedAt, done: !!o.completedAt },
+  ];
+  if (o.status === "CANCELLED") {
+    const happened = steps.filter((s) => s.done);
+    happened.push({ label: "订单取消", time: o.cancelledAt, done: true });
+    return happened;
+  }
+  return steps;
+});
 
 function previewPhoto(i: number) {
   uni.previewImage({ urls: photos.value, current: i });
@@ -283,6 +368,64 @@ async function onSubmitReview() {
   }
 }
 
+const confirming = ref(false);
+
+/** 微信打款确认收款：小程序拉起 requestMerchantTransfer；H5 走 mock 确认接口 */
+async function onConfirmPayout() {
+  if (confirming.value) return;
+  confirming.value = true;
+  // #ifdef MP-WEIXIN
+  try {
+    const pkg = order.value?.packageInfo || "";
+    if (!pkg) {
+      uni.showToast({ title: "打款信息缺失，请稍后重试", icon: "none" });
+      return;
+    }
+    const mchId = import.meta.env.VITE_WX_MCH_ID;
+    await new Promise<void>((resolve, reject) => {
+      wx.requestMerchantTransfer({
+        ...(mchId ? { mchId } : {}),
+        package: pkg,
+        success: () => resolve(),
+        fail: (err: any) => reject(err),
+      });
+    });
+    uni.showToast({ title: "已确认收款", icon: "success" });
+    await load();
+  } catch (e) {
+    uni.showToast({ title: "确认收款未完成", icon: "none" });
+  } finally {
+    confirming.value = false;
+  }
+  // #endif
+  // #ifdef H5
+  try {
+    await confirmWxPayout(orderId);
+    uni.showToast({ title: "已确认收款", icon: "success" });
+    await load();
+  } catch (e) {
+    /* 错误提示已由 request 统一处理 */
+  } finally {
+    confirming.value = false;
+  }
+  // #endif
+  // #ifndef MP-WEIXIN || H5
+  confirming.value = false;
+  // #endif
+}
+
+/** 再来一单：带上原回收站与下单方式 */
+function onOrderAgain() {
+  const o = order.value;
+  if (!o) return;
+  const storeId = o.stationId ? String(o.stationId) : "";
+  const storeName = encodeURIComponent(o.stationName || "");
+  const type = o.type === "DROPOFF" ? "DROPOFF" : "PICKUP";
+  uni.navigateTo({
+    url: `/pages-customer/order/create?storeId=${storeId}&storeName=${storeName}&type=${type}`,
+  });
+}
+
 function onCancel() {
   uni.showModal({
     title: "取消订单",
@@ -321,6 +464,88 @@ onLoad((options) => {
     margin-top: 12rpx;
     border-radius: 44rpx !important;
   }
+
+  :deep(.detail__again) {
+    margin-top: 12rpx;
+    border-radius: 44rpx !important;
+  }
+}
+
+.progress {
+  padding: 4rpx 0 0 8rpx;
+
+  &__item {
+    display: flex;
+    gap: 20rpx;
+
+    &--done {
+      .progress__dot {
+        background: $theme-color;
+        box-shadow: 0 0 0 6rpx rgba(7, 193, 96, 0.15);
+      }
+
+      .progress__label {
+        color: #1f2329;
+        font-weight: 600;
+      }
+    }
+  }
+
+  &__track {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 24rpx;
+    flex-shrink: 0;
+  }
+
+  &__dot {
+    margin-top: 8rpx;
+    width: 20rpx;
+    height: 20rpx;
+    border-radius: 50%;
+    background: #dcdfe6;
+    flex-shrink: 0;
+  }
+
+  &__line {
+    flex: 1;
+    width: 2rpx;
+    min-height: 32rpx;
+    background: #ebedf0;
+    margin: 6rpx 0;
+  }
+
+  &__main {
+    flex: 1;
+    padding-bottom: 28rpx;
+    min-width: 0;
+  }
+
+  &__label {
+    font-size: 27rpx;
+    color: #86909c;
+  }
+
+  &__time {
+    margin-top: 4rpx;
+    font-size: 22rpx;
+    color: #c0c4cc;
+  }
+}
+
+.pay-confirm {
+  &__hint {
+    margin-top: 16rpx;
+    text-align: center;
+    font-size: 22rpx;
+    color: #86909c;
+  }
+}
+
+:deep(.pay-confirm__btn) {
+  margin-top: 24rpx;
+  border-radius: 44rpx !important;
 }
 
 .status-head {

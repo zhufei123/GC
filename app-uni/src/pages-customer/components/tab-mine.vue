@@ -11,6 +11,30 @@
     </view>
 
     <view class="mine__body">
+      <!-- 环保成就 -->
+      <view class="eco-card">
+        <view class="eco-card__head">
+          <wd-icon name="discount" size="34rpx" color="#07c160" />
+          <text>环保成就</text>
+        </view>
+        <view class="eco-card__grid">
+          <view class="eco-card__item">
+            <view class="eco-card__value">{{ stats.totalWeightKg ?? "0" }}<text class="eco-card__unit">kg</text></view>
+            <view class="eco-card__label">累计回收</view>
+          </view>
+          <view class="eco-card__divider" />
+          <view class="eco-card__item">
+            <view class="eco-card__value">{{ stats.completedOrders ?? 0 }}<text class="eco-card__unit">单</text></view>
+            <view class="eco-card__label">完成订单</view>
+          </view>
+          <view class="eco-card__divider" />
+          <view class="eco-card__item">
+            <view class="eco-card__value">{{ stats.co2SavedKg ?? "0" }}<text class="eco-card__unit">kg</text></view>
+            <view class="eco-card__label">累计减碳</view>
+          </view>
+        </view>
+      </view>
+
       <view class="menu-card">
         <view class="menu-item" @tap="goWallet">
           <view class="menu-item__left">
@@ -23,9 +47,11 @@
         </view>
         <view class="menu-item" @tap="goNotice">
           <view class="menu-item__left">
-            <view class="menu-item__icon" style="background: #fff8e0">
-              <wd-icon name="notification" size="36rpx" color="#f5a623" />
-            </view>
+            <wd-badge :model-value="unreadCount" :max="99">
+              <view class="menu-item__icon" style="background: #fff8e0">
+                <wd-icon name="notification" size="36rpx" color="#f5a623" />
+              </view>
+            </wd-badge>
             <text>消息通知</text>
           </view>
           <wd-icon name="arrow-right" size="30rpx" color="#c0c4cc" />
@@ -95,11 +121,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import { useUserStore } from "@/store/user";
 import { logout as apiLogout } from "@/api/auth";
+import { getUnreadNoticeCount, getUserStats, type UserStats } from "@/api/user";
 
 const userStore = useUserStore();
+
+const unreadCount = ref(0);
+const stats = ref<UserStats>({});
 
 const bossHint = computed(() => {
   switch (userStore.recyclerStatus) {
@@ -115,7 +145,24 @@ const bossHint = computed(() => {
 });
 
 function refresh() {
-  /* 静态数据，无需刷新 */
+  loadUnread();
+  loadStats();
+}
+
+async function loadUnread() {
+  try {
+    unreadCount.value = Number(await getUnreadNoticeCount()) || 0;
+  } catch (e) {
+    /* 接口未就绪时不展示角标 */
+  }
+}
+
+async function loadStats() {
+  try {
+    stats.value = (await getUserStats()) || {};
+  } catch (e) {
+    /* 接口未就绪时展示 0 */
+  }
 }
 
 function goWallet() {
@@ -227,6 +274,59 @@ defineExpose({ refresh });
   :deep(.mine__logout) {
     margin-top: 48rpx;
     border-radius: 48rpx !important;
+  }
+}
+
+.eco-card {
+  background: linear-gradient(160deg, #e8f9ef 0%, #ffffff 55%);
+  border: 1rpx solid rgba(7, 193, 96, 0.18);
+  border-radius: 24rpx;
+  padding: 26rpx 28rpx;
+  margin-bottom: 24rpx;
+
+  &__head {
+    display: flex;
+    align-items: center;
+    gap: 10rpx;
+    font-size: 28rpx;
+    font-weight: 700;
+    color: #1f2329;
+  }
+
+  &__grid {
+    margin-top: 24rpx;
+    display: flex;
+    align-items: center;
+  }
+
+  &__item {
+    flex: 1;
+    text-align: center;
+  }
+
+  &__value {
+    font-size: 36rpx;
+    font-weight: 700;
+    color: $theme-color;
+  }
+
+  &__unit {
+    margin-left: 4rpx;
+    font-size: 22rpx;
+    font-weight: 400;
+    color: #86909c;
+  }
+
+  &__label {
+    margin-top: 8rpx;
+    font-size: 22rpx;
+    color: #86909c;
+  }
+
+  &__divider {
+    width: 1rpx;
+    height: 48rpx;
+    background: rgba(7, 193, 96, 0.15);
   }
 }
 

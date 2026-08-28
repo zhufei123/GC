@@ -5,8 +5,10 @@ import com.recycle.app.vo.CategoryNodeVO;
 import com.recycle.app.vo.SkuVO;
 import com.recycle.common.entity.recycle.Category;
 import com.recycle.common.entity.recycle.Sku;
+import com.recycle.common.entity.recycle.SkuPriceLog;
 import com.recycle.common.mapper.CategoryMapper;
 import com.recycle.common.mapper.SkuMapper;
+import com.recycle.common.mapper.SkuPriceLogMapper;
 import com.recycle.common.support.SkuPriceReader;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -18,6 +20,8 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -25,6 +29,7 @@ public class AppRecycleService {
 
     private final CategoryMapper categoryMapper;
     private final SkuMapper skuMapper;
+    private final SkuPriceLogMapper skuPriceLogMapper;
     private final SkuPriceReader skuPriceReader;
 
     /** 仅 status=1 的分类树 */
@@ -77,6 +82,7 @@ public class AppRecycleService {
         List<Sku> skus = skuMapper.selectList(wrapper);
         Map<Long, BigDecimal> prices =
                 skuPriceReader.currentPrices(skus.stream().map(Sku::getId).toList());
+        Map<Long, SkuPriceLog> latestLogs = latestPriceLogs(prices.keySet().stream().toList());
         return skus.stream().map(s -> {
             SkuVO vo = new SkuVO();
             vo.setId(s.getId());
@@ -87,7 +93,39 @@ public class AppRecycleService {
             vo.setDescription(s.getDescription());
             vo.setSort(s.getSort());
             vo.setPrice(prices.get(s.getId()));
+            fillTrend(vo, latestLogs.get(s.getId()));
             return vo;
         }).toList();
+    }
+
+    /** 最新一条调价记录（按生效时间，其次 id） */
+    private Map<Long, SkuPriceLog> latestPriceLogs(List<Long> skuIds) {
+        if (skuIds.isEmpty()) {
+            return Map.of();
+        }
+        return skuPriceLogMapper.selectList(new LambdaQueryWrapper<SkuPriceLog>()
+                        .in(SkuPriceLog::getSkuId, skuIds))
+                .stream()
+                .collect(Collectors.toMap(SkuPriceLog::getSkuId, Function.identity(),
+                        (a, b) -> pickLater(a, b)));
+    }
+
+    private SkuPriceLog pickLater(SkuPriceLog a, SkuPriceLog b) {
+        if (a.getEffectiveAt() != null && b.getEffectiveAt() != null
+                && !a.getEffectiveAt().equals(b.getEffectiveAt())) {
+            return a.getEffectiveAt().isAfter(b.getEffectiveAt()) ? a : b;
+        }
+        return a.getId() >= b.getId() ? a : b;
+    }
+
+    /** 有报价且有调价记录时给出趋势：newPrice 相对 oldPrice */
+    private void fillTrend(SkuVO vo, SkuPriceLog log) {
+        if (vo.getPrice() == null || log == null || log.getNewPrice() == null || log.getOldPrice() == null) {
+            return;
+        }
+        BigDecimal diff = log.getNewPrice().subtract(log.getOldPrice());
+        vo.setPriceDiff(diff);
+        int sign = diff.compareTo(BigDecimal.ZERO);
+        vo.setTrend(sign > 0 ? "UP" : sign < 0 ? "DOWN" : "FLAT");
     }
 }

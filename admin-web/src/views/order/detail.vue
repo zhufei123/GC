@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
+import { payoutChannelText, payoutStatusInfo } from '@/api/finance'
 import {
   cancelOrder,
   getOrderDetail,
@@ -64,6 +65,9 @@ const canCancel = computed(() => {
   const s = detail.value?.status
   return !!s && s !== 'COMPLETED' && s !== 'CANCELLED'
 })
+
+/** 打款信息:后端返回 payMethod / payoutStatus 时才展示 */
+const hasPayoutInfo = computed(() => !!(detail.value?.payMethod || detail.value?.payoutStatus))
 
 /** 时间线：当前状态 primary，已发生 success，未到达默认灰 */
 function timelineType(item: OrderTimelineVO): 'primary' | 'success' | undefined {
@@ -144,6 +148,19 @@ async function handleCancel(): Promise<void> {
               {{ detail?.appointDate ? `${detail.appointDate} ${detail.appointPeriod ?? ''}` : '-' }}
             </el-descriptions-item>
             <el-descriptions-item label="地址" :span="2">{{ addressText }}</el-descriptions-item>
+            <el-descriptions-item v-if="hasPayoutInfo" label="打款方式">
+              {{ payoutChannelText(detail?.payMethod) }}
+            </el-descriptions-item>
+            <el-descriptions-item v-if="hasPayoutInfo" label="打款状态">
+              <el-tag
+                v-if="detail?.payoutStatus"
+                :type="payoutStatusInfo(detail.payoutStatus).type"
+                size="small"
+              >
+                {{ payoutStatusInfo(detail.payoutStatus).label }}
+              </el-tag>
+              <span v-else>-</span>
+            </el-descriptions-item>
             <el-descriptions-item label="备注" :span="2">
               {{ detail?.remark || '-' }}
             </el-descriptions-item>

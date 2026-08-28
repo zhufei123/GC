@@ -26,8 +26,8 @@ public class AdminFinanceController {
 
     private final PayoutOrderMapper payoutOrderMapper;
 
-    @Operation(summary = "打款单分页（复用订单查看权限）")
-    @SaCheckPermission(type = StpKit.ADMIN_TYPE, value = "trade:order:list")
+    @Operation(summary = "打款单分页")
+    @SaCheckPermission(type = StpKit.ADMIN_TYPE, value = "finance:payout:list")
     @GetMapping("/payout/page")
     public R<PageResult<PayoutOrder>> page(@RequestParam(required = false) String status,
                                            @RequestParam(required = false) String channel,

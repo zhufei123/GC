@@ -307,6 +307,7 @@ CREATE TABLE notify_log (
   content      VARCHAR(500) DEFAULT NULL,
   status       VARCHAR(16)  NOT NULL DEFAULT 'SENT',
   error        VARCHAR(200) DEFAULT NULL,
+  read_at      DATETIME     DEFAULT NULL,
   create_time  DATETIME     NOT NULL,
   deleted      TINYINT      DEFAULT 0,
   KEY idx_notify_user (user_id)

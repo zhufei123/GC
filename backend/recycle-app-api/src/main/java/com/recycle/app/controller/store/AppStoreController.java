@@ -5,6 +5,7 @@ import com.recycle.app.vo.StoreCityVO;
 import com.recycle.app.vo.StoreDetailVO;
 import com.recycle.app.vo.StoreNearbyVO;
 import com.recycle.app.vo.StorePriceVO;
+import com.recycle.app.vo.StoreReviewVO;
 import com.recycle.common.core.R;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -53,5 +54,11 @@ public class AppStoreController {
     @GetMapping("/{id}/prices")
     public R<List<StorePriceVO>> prices(@PathVariable Long id) {
         return R.ok(storeService.prices(id));
+    }
+
+    @Operation(summary = "门店评价列表（最新 50 条，昵称脱敏）")
+    @GetMapping("/{id}/reviews")
+    public R<List<StoreReviewVO>> reviews(@PathVariable Long id) {
+        return R.ok(storeService.reviews(id));
     }
 }

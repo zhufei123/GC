@@ -183,6 +183,12 @@ import { createOrder, getTimeslots } from "@/api/order";
 import { getStorePrices, getCachedStore } from "@/api/store";
 import type { StoreItem } from "@/api/store";
 import { chooseAndUpload } from "@/utils/upload";
+import { useUserStore } from "@/store/user";
+
+/** 支付宝小程序全局对象(仅 MP-ALIPAY 运行时存在) */
+declare const my: any;
+
+const userStore = useUserStore();
 
 const DEFAULT_PERIODS = ["09:00-11:00", "11:00-13:00", "14:00-16:00", "16:00-18:00"];
 const MAX_PHOTOS = 6;
@@ -237,22 +243,53 @@ function toggleSku(sku: SkuItem) {
   }
 }
 
-/** 下单成功后请求订阅「接单进度」消息（仅微信小程序，模板 id 未配置则跳过） */
-function requestOrderSubscribe() {
-  // #ifdef MP-WEIXIN
-  const tmplId = import.meta.env.VITE_WX_TMPL_ACCEPT;
-  if (!tmplId) return;
-  try {
-    (uni as any).requestSubscribeMessage({
-      tmplIds: [tmplId],
-      complete: () => {
-        /* 授权与否均不阻断下单流程 */
-      },
-    });
-  } catch (e) {
-    /* 忽略订阅异常 */
-  }
-  // #endif
+/**
+ * 请求订阅「接单/称重/完成」消息。
+ * 须在用户点击提交的调用链最前面发起(微信要求手势上下文)，
+ * complete 后 resolve，授权与否均不阻断下单。
+ */
+function requestOrderSubscribe(): Promise<void> {
+  return new Promise((resolve) => {
+    // #ifdef MP-WEIXIN
+    const tmplIds = [
+      import.meta.env.VITE_WX_TMPL_ACCEPT,
+      import.meta.env.VITE_WX_TMPL_WEIGHED,
+      import.meta.env.VITE_WX_TMPL_COMPLETED,
+    ].filter((id) => !!id);
+    if (tmplIds.length) {
+      try {
+        (uni as any).requestSubscribeMessage({
+          tmplIds: tmplIds.slice(0, 3),
+          complete: () => resolve(),
+        });
+        return;
+      } catch (e) {
+        resolve();
+        return;
+      }
+    }
+    // #endif
+    // #ifdef MP-ALIPAY
+    const entityIds = [
+      import.meta.env.VITE_ALIPAY_TMPL_ACCEPT,
+      import.meta.env.VITE_ALIPAY_TMPL_WEIGHED,
+      import.meta.env.VITE_ALIPAY_TMPL_COMPLETED,
+    ].filter((id) => !!id);
+    if (entityIds.length) {
+      try {
+        my.requestSubscribeMessage({
+          entityIds: entityIds.slice(0, 3),
+          complete: () => resolve(),
+        });
+        return;
+      } catch (e) {
+        resolve();
+        return;
+      }
+    }
+    // #endif
+    resolve();
+  });
 }
 
 function chooseAddress() {
@@ -356,7 +393,17 @@ async function submit() {
     uni.showToast({ title: "请选择时间段", icon: "none" });
     return;
   }
+  // 后端同样会拒绝无手机号下单，前置提示引导补绑
+  if (!userStore.hasPhone) {
+    uni.showToast({ title: "请先绑定手机号", icon: "none" });
+    setTimeout(() => {
+      uni.navigateTo({ url: "/pages/login/index?bind=1" });
+    }, 600);
+    return;
+  }
   submitting.value = true;
+  // 订阅授权面板须在提交手势的调用链中先弹出，关闭后继续下单
+  await requestOrderSubscribe();
   try {
     await createOrder({
       type: orderType.value,
@@ -374,7 +421,6 @@ async function submit() {
       remark: remark.value,
       requestId: `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
     });
-    requestOrderSubscribe();
     uni.showToast({ title: "预约成功", icon: "success" });
     setTimeout(() => {
       uni.reLaunch({ url: "/pages-customer/index?tab=2" });

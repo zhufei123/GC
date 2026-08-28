@@ -96,6 +96,9 @@ public class AdminTradeService {
         vo.setAppointPeriod(order.getAppointPeriod());
         vo.setEstimateAmount(order.getEstimateAmount());
         vo.setActualAmount(order.getActualAmount());
+        vo.setPayMethod(order.getPayMethod());
+        vo.setPayoutStatus(order.getPayoutStatus());
+        vo.setPaidAt(order.getPaidAt());
         vo.setImages(JsonUtils.toStringList(order.getPhotosCustomer()));
         vo.setWeighImages(JsonUtils.toStringList(order.getPhotosWeigh()));
         vo.setRemark(order.getRemark());

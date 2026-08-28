@@ -25,7 +25,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { onShow, onReachBottom } from "@dcloudio/uni-app";
-import { getUserNotices, type NoticeItem } from "@/api/user";
+import { getUserNotices, readAllNotices, type NoticeItem } from "@/api/user";
 
 const PAGE_SIZE = 15;
 
@@ -74,7 +74,15 @@ function loadMore() {
   if (!finished.value) load();
 }
 
-onShow(() => load(true));
+onShow(async () => {
+  // 进入消息页即全部标记已读，「我的」页角标随之清零
+  try {
+    await readAllNotices();
+  } catch (e) {
+    /* 接口未就绪时忽略 */
+  }
+  load(true);
+});
 onReachBottom(loadMore);
 </script>
 

@@ -16,6 +16,10 @@ export interface SkuItem {
   unit?: string;
   description?: string;
   price?: string | null;
+  /** 较昨日涨跌: UP | DOWN | FLAT，无昨日价为空 */
+  trend?: string;
+  /** 涨跌差价(绝对值字符串) */
+  priceDiff?: string;
 }
 
 export function getCategoryTree() {

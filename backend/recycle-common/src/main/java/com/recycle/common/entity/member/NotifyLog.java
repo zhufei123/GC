@@ -35,6 +35,10 @@ public class NotifyLog implements Serializable {
     private String status;
     private String error;
 
+    /** 已读时间，null 未读 */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
+    private LocalDateTime readAt;
+
     @TableField(fill = FieldFill.INSERT)
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
     private LocalDateTime createTime;
