@@ -16,7 +16,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
  * 拦截规则：
  * - /admin-api/** 除 login 外要求 ADMIN 登录
  * - /app-api/boss/** 要求 BOSS 登录
- * - 其余 /app-api/** 除公开接口（auth/home/recycle/store/nearby/notices）外要求 USER 或 BOSS 已登录
+ * - 其余 /app-api/** 除公开接口（auth/home/recycle/store/notices）外要求 USER 或 BOSS 已登录
  */
 @Configuration
 public class SaTokenConfig implements WebMvcConfigurer {
@@ -50,7 +50,7 @@ public class SaTokenConfig implements WebMvcConfigurer {
                                     "/app-api/home",
                                     "/app-api/timeslots",
                                     "/app-api/recycle/**",
-                                    "/app-api/store/nearby",
+                                    "/app-api/store/**",
                                     "/app-api/notices/**",
                                     "/app-api/boss/**")
                             .check(r -> {

@@ -57,7 +57,7 @@ public class AppRecycleService {
         return roots;
     }
 
-    /** 上架 SKU + 今日生效价（null=暂无报价） */
+    /** 上架 SKU + 平台指导价（null=暂无指导价；成交价以门店报价为准） */
     public List<SkuVO> skuList(Long categoryId, String keyword) {
         LambdaQueryWrapper<Sku> wrapper = new LambdaQueryWrapper<Sku>()
                 .eq(Sku::getStatus, 1)

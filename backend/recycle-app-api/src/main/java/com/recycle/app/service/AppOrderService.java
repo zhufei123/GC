@@ -21,7 +21,7 @@ import com.recycle.common.mapper.RecycleOrderMapper;
 import com.recycle.common.mapper.RecycleStationMapper;
 import com.recycle.common.mapper.SkuMapper;
 import com.recycle.common.mapper.UserAddressMapper;
-import com.recycle.common.support.SkuPriceReader;
+import com.recycle.common.support.StationPriceReader;
 import com.recycle.common.util.JsonUtils;
 import com.recycle.common.util.QueryParams;
 import lombok.RequiredArgsConstructor;
@@ -54,7 +54,7 @@ public class AppOrderService {
     private final UserAddressMapper addressMapper;
     private final RecycleStationMapper stationMapper;
     private final SkuMapper skuMapper;
-    private final SkuPriceReader skuPriceReader;
+    private final StationPriceReader stationPriceReader;
     private final OrderAssembler orderAssembler;
 
     @Transactional
@@ -93,6 +93,17 @@ public class AppOrderService {
             order.setPhotosCustomer(JsonUtils.toJson(dto.getImages()));
         }
 
+        // 上门/到店均须选定回收站：按门店报价成交
+        if (dto.getStoreId() == null) {
+            throw new BizException(ErrorCode.PARAM_ERROR, "请选择回收站");
+        }
+        RecycleStation store = stationMapper.selectById(dto.getStoreId());
+        if (store == null || store.getStatus() == null || store.getStatus() != 1
+                || !"approved".equals(store.getAuditStatus())) {
+            throw new BizException(ErrorCode.STORE_NOT_APPROVED, "门店不存在或未营业");
+        }
+        order.setStationId(store.getId());
+
         if ("PICKUP".equals(order.getType())) {
             if (dto.getAddressId() == null) {
                 throw new BizException(ErrorCode.PARAM_ERROR, "上门单必须选择地址");
@@ -107,15 +118,6 @@ public class AppOrderService {
             order.setLongitude(address.getLongitude());
             order.setLatitude(address.getLatitude());
         } else if ("DROPOFF".equals(order.getType())) {
-            if (dto.getStoreId() == null) {
-                throw new BizException(ErrorCode.PARAM_ERROR, "到店单必须选择门店");
-            }
-            RecycleStation store = stationMapper.selectById(dto.getStoreId());
-            if (store == null || store.getStatus() == null || store.getStatus() != 1
-                    || !"approved".equals(store.getAuditStatus())) {
-                throw new BizException(ErrorCode.STORE_NOT_APPROVED, "门店不存在或未营业");
-            }
-            order.setStationId(store.getId());
             order.setReceiver(store.getContactName());
             order.setPhone(store.getPhone());
             order.setAddress(joinStoreAddress(store));
@@ -123,12 +125,12 @@ public class AppOrderService {
             order.setLatitude(store.getLatitude());
         }
 
-        // 预估明细 + 当前价快照
+        // 预估明细 + 门店当前报价快照
         List<Long> skuIds = dto.getEstimateItems().stream()
                 .map(OrderCreateDTO.EstimateItem::getSkuId).toList();
         Map<Long, Sku> skus = skuMapper.selectByIds(skuIds).stream()
                 .collect(Collectors.toMap(Sku::getId, Function.identity()));
-        Map<Long, BigDecimal> prices = skuPriceReader.currentPrices(skuIds);
+        Map<Long, BigDecimal> prices = stationPriceReader.currentPrices(store.getId(), skuIds);
 
         List<OrderItem> items = new ArrayList<>();
         BigDecimal estimateAmount = BigDecimal.ZERO;
@@ -137,7 +139,10 @@ public class AppOrderService {
             if (sku == null || sku.getStatus() == null || sku.getStatus() != 1) {
                 throw new BizException(ErrorCode.SKU_OFFLINE);
             }
-            BigDecimal price = prices.getOrDefault(sku.getId(), BigDecimal.ZERO);
+            BigDecimal price = prices.get(sku.getId());
+            if (price == null) {
+                throw new BizException(ErrorCode.PARAM_ERROR, "该回收站暂未报价该品类");
+            }
             BigDecimal weight = itemDto.getEstimateWeight();
             if (weight == null || weight.compareTo(BigDecimal.ZERO) <= 0) {
                 throw new BizException(ErrorCode.PARAM_ERROR, "预估重量必须大于 0");

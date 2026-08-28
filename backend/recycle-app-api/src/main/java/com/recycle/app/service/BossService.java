@@ -3,25 +3,32 @@ package com.recycle.app.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.recycle.app.dto.BossPriceSaveDTO;
 import com.recycle.app.dto.BossStoreUpdateDTO;
 import com.recycle.app.dto.CompleteDTO;
 import com.recycle.app.dto.WeighDTO;
 import com.recycle.app.support.OrderAssembler;
+import com.recycle.app.vo.BossPriceVO;
 import com.recycle.app.vo.OrderVO;
 import com.recycle.app.vo.WorkbenchVO;
 import com.recycle.common.core.BizException;
 import com.recycle.common.core.ErrorCode;
 import com.recycle.common.core.PageQuery;
 import com.recycle.common.core.PageResult;
+import com.recycle.common.entity.recycle.Category;
 import com.recycle.common.entity.recycle.Sku;
 import com.recycle.common.entity.store.RecycleStation;
+import com.recycle.common.entity.store.StationSkuPrice;
 import com.recycle.common.entity.trade.OrderItem;
 import com.recycle.common.entity.trade.RecycleOrder;
+import com.recycle.common.mapper.CategoryMapper;
 import com.recycle.common.mapper.OrderItemMapper;
 import com.recycle.common.mapper.RecycleOrderMapper;
 import com.recycle.common.mapper.RecycleStationMapper;
 import com.recycle.common.mapper.SkuMapper;
+import com.recycle.common.mapper.StationSkuPriceMapper;
 import com.recycle.common.support.SkuPriceReader;
+import com.recycle.common.support.StationPriceReader;
 import com.recycle.common.util.JsonUtils;
 import com.recycle.common.util.QueryParams;
 import lombok.RequiredArgsConstructor;
@@ -46,7 +53,10 @@ public class BossService {
     private final RecycleOrderMapper orderMapper;
     private final OrderItemMapper orderItemMapper;
     private final SkuMapper skuMapper;
+    private final CategoryMapper categoryMapper;
+    private final StationSkuPriceMapper stationSkuPriceMapper;
     private final SkuPriceReader skuPriceReader;
+    private final StationPriceReader stationPriceReader;
     private final OrderAssembler orderAssembler;
 
     public RecycleStation myStation(Long bossId) {
@@ -151,7 +161,7 @@ public class BossService {
         }
     }
 
-    /** 称重：实收明细 + 提交时刻生效价快照，SERVING → WEIGHED */
+    /** 称重：实收明细 + 提交时刻本店报价快照，SERVING → WEIGHED */
     @Transactional
     public BigDecimal weigh(Long bossId, Long orderId, WeighDTO dto) {
         RecycleStation station = myStation(bossId);
@@ -162,7 +172,7 @@ public class BossService {
         List<Long> skuIds = dto.getItems().stream().map(WeighDTO.WeighItem::getSkuId).toList();
         Map<Long, Sku> skus = skuMapper.selectByIds(skuIds).stream()
                 .collect(Collectors.toMap(Sku::getId, Function.identity()));
-        Map<Long, BigDecimal> prices = skuPriceReader.currentPrices(skuIds);
+        Map<Long, BigDecimal> prices = stationPriceReader.currentPrices(station.getId(), skuIds);
 
         // 重复称重覆盖旧实收明细
         orderItemMapper.delete(new LambdaQueryWrapper<OrderItem>()
@@ -175,7 +185,10 @@ public class BossService {
             if (sku == null || sku.getStatus() == null || sku.getStatus() != 1) {
                 throw new BizException(ErrorCode.SKU_OFFLINE);
             }
-            BigDecimal price = prices.getOrDefault(sku.getId(), BigDecimal.ZERO);
+            BigDecimal price = prices.get(sku.getId());
+            if (price == null) {
+                throw new BizException(ErrorCode.PARAM_ERROR, "该回收站暂未报价该品类");
+            }
             BigDecimal amount = price.multiply(itemDto.getWeight()).setScale(2, RoundingMode.HALF_UP);
             total = total.add(amount);
 
@@ -230,11 +243,17 @@ public class BossService {
     public PageResult<OrderVO> orderPage(Long bossId, String status, PageQuery query) {
         RecycleStation station = myStation(bossId);
         String statusFilter = QueryParams.orderStatus(status);
+        LambdaQueryWrapper<RecycleOrder> wrapper;
+        if ("PENDING".equals(statusFilter)) {
+            // 待接单：C 端下单已绑定本店（含历史未指派单），口径与接单大厅一致
+            wrapper = visiblePending(station.getId());
+        } else {
+            wrapper = new LambdaQueryWrapper<RecycleOrder>()
+                    .eq(RecycleOrder::getStationId, station.getId())
+                    .eq(StringUtils.hasText(statusFilter), RecycleOrder::getStatus, statusFilter);
+        }
         Page<RecycleOrder> page = orderMapper.selectPage(query.toPage(),
-                new LambdaQueryWrapper<RecycleOrder>()
-                        .eq(RecycleOrder::getStationId, station.getId())
-                        .eq(StringUtils.hasText(statusFilter), RecycleOrder::getStatus, statusFilter)
-                        .orderByDesc(RecycleOrder::getCreateTime));
+                wrapper.orderByDesc(RecycleOrder::getCreateTime));
         return PageResult.of(page, o -> orderAssembler.toVO(o, false, false));
     }
 
@@ -242,6 +261,95 @@ public class BossService {
         RecycleStation station = myStation(bossId);
         RecycleOrder order = requireStationOrder(station, orderId);
         return orderAssembler.toVO(order, true, false);
+    }
+
+    /** 报价管理：全部上架 SKU + 指导价 + 本店报价（无门店 403） */
+    public List<BossPriceVO> prices(Long bossId) {
+        RecycleStation station = stationOrForbidden(bossId);
+        List<Sku> skus = skuMapper.selectList(new LambdaQueryWrapper<Sku>()
+                .eq(Sku::getStatus, 1)
+                .orderByAsc(Sku::getSort));
+        if (skus.isEmpty()) {
+            return List.of();
+        }
+        List<Long> skuIds = skus.stream().map(Sku::getId).toList();
+        Map<Long, BigDecimal> guidePrices = skuPriceReader.currentPrices(skuIds);
+        Map<Long, StationSkuPrice> mine = stationSkuPriceMapper.selectList(
+                        new LambdaQueryWrapper<StationSkuPrice>()
+                                .eq(StationSkuPrice::getStationId, station.getId()))
+                .stream()
+                .collect(Collectors.toMap(StationSkuPrice::getSkuId, Function.identity(), (a, b) -> a));
+        Map<Long, String> categoryNames = categoryMapper.selectByIds(
+                        skus.stream().map(Sku::getCategoryId).distinct().toList())
+                .stream().collect(Collectors.toMap(Category::getId, Category::getName));
+        return skus.stream().map(sku -> {
+            BossPriceVO vo = new BossPriceVO();
+            vo.setSkuId(sku.getId());
+            vo.setSkuName(sku.getName());
+            vo.setUnit(sku.getUnit());
+            vo.setCategoryName(categoryNames.get(sku.getCategoryId()));
+            vo.setGuidePrice(guidePrices.get(sku.getId()));
+            StationSkuPrice quote = mine.get(sku.getId());
+            if (quote != null) {
+                vo.setStationPrice(quote.getPrice());
+                vo.setStatus(quote.getStatus());
+                vo.setRemark(quote.getRemark());
+            }
+            return vo;
+        }).toList();
+    }
+
+    /** 报价 upsert：报价中(status=1)必须 price > 0，status 仅 0/1（无门店 403） */
+    @Transactional
+    public void savePrices(Long bossId, BossPriceSaveDTO dto) {
+        RecycleStation station = stationOrForbidden(bossId);
+        List<Long> skuIds = dto.getItems().stream().map(BossPriceSaveDTO.Item::getSkuId).toList();
+        Map<Long, Sku> skus = skuMapper.selectByIds(skuIds).stream()
+                .collect(Collectors.toMap(Sku::getId, Function.identity()));
+        Map<Long, StationSkuPrice> existing = stationSkuPriceMapper.selectList(
+                        new LambdaQueryWrapper<StationSkuPrice>()
+                                .eq(StationSkuPrice::getStationId, station.getId())
+                                .in(StationSkuPrice::getSkuId, skuIds))
+                .stream()
+                .collect(Collectors.toMap(StationSkuPrice::getSkuId, Function.identity(), (a, b) -> a));
+        for (BossPriceSaveDTO.Item item : dto.getItems()) {
+            Sku sku = skus.get(item.getSkuId());
+            if (sku == null || sku.getStatus() == null || sku.getStatus() != 1) {
+                throw new BizException(ErrorCode.SKU_OFFLINE);
+            }
+            int status = item.getStatus() == null ? 1 : item.getStatus();
+            if (status != 0 && status != 1) {
+                throw new BizException(ErrorCode.PARAM_ERROR, "报价状态仅允许 0/1");
+            }
+            boolean priceValid = item.getPrice() != null && item.getPrice().compareTo(BigDecimal.ZERO) > 0;
+            if (status == 1 && !priceValid) {
+                throw new BizException(ErrorCode.PARAM_ERROR,
+                        "「" + sku.getName() + "」报价必须大于 0");
+            }
+            StationSkuPrice row = existing.get(item.getSkuId());
+            if (row == null) {
+                // 停报且未填有效价：无可发布内容，跳过
+                if (!priceValid) {
+                    continue;
+                }
+                row = new StationSkuPrice();
+                row.setStationId(station.getId());
+                row.setSkuId(item.getSkuId());
+                row.setPrice(item.getPrice());
+                row.setStatus(status);
+                row.setRemark(item.getRemark());
+                stationSkuPriceMapper.insert(row);
+            } else {
+                if (priceValid) {
+                    row.setPrice(item.getPrice());
+                }
+                row.setStatus(status);
+                if (StringUtils.hasText(item.getRemark())) {
+                    row.setRemark(item.getRemark());
+                }
+                stationSkuPriceMapper.updateById(row);
+            }
+        }
     }
 
     public RecycleStation getStore(Long bossId) {
@@ -290,6 +398,16 @@ public class BossService {
             station.setPhotos(JsonUtils.toJson(dto.getPhotos()));
         }
         stationMapper.updateById(station);
+    }
+
+    /** 报价管理入口：未入驻门店返回 403 */
+    private RecycleStation stationOrForbidden(Long bossId) {
+        RecycleStation station = stationMapper.selectOne(new LambdaQueryWrapper<RecycleStation>()
+                .eq(RecycleStation::getOwnerUserId, bossId));
+        if (station == null) {
+            throw new BizException(ErrorCode.FORBIDDEN, "请先入驻门店");
+        }
+        return station;
     }
 
     private RecycleStation requireWorkableStation(Long bossId) {

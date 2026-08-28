@@ -1,10 +1,12 @@
 package com.recycle.app.controller.boss;
 
+import com.recycle.app.dto.BossPriceSaveDTO;
 import com.recycle.app.dto.BossStoreUpdateDTO;
 import com.recycle.app.dto.CompleteDTO;
 import com.recycle.app.dto.WeighDTO;
 import com.recycle.app.service.BossService;
 import com.recycle.app.support.CurrentUser;
+import com.recycle.app.vo.BossPriceVO;
 import com.recycle.app.vo.OrderVO;
 import com.recycle.app.vo.WorkbenchVO;
 import com.recycle.common.core.PageQuery;
@@ -25,6 +27,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Map;
 
 @Tag(name = "App-老板端")
@@ -84,6 +87,26 @@ public class BossController {
     @PostMapping("/order/{id}/complete")
     public R<Void> complete(@PathVariable Long id, @Valid @RequestBody CompleteDTO dto) {
         bossService.complete(CurrentUser.bossId(), id, dto);
+        return R.ok();
+    }
+
+    @Operation(summary = "报价管理：全部上架 SKU + 指导价 + 本店报价")
+    @GetMapping("/prices")
+    public R<Map<String, List<BossPriceVO>>> prices() {
+        return R.ok(Map.of("list", bossService.prices(CurrentUser.bossId())));
+    }
+
+    @Operation(summary = "批量报价 upsert（报价中 price>0，status 0/1）")
+    @PutMapping("/prices")
+    public R<Void> savePrices(@Valid @RequestBody BossPriceSaveDTO dto) {
+        bossService.savePrices(CurrentUser.bossId(), dto);
+        return R.ok();
+    }
+
+    @Operation(summary = "批量报价（POST 别名，语义同 PUT）")
+    @PostMapping("/prices")
+    public R<Void> createPrices(@Valid @RequestBody BossPriceSaveDTO dto) {
+        bossService.savePrices(CurrentUser.bossId(), dto);
         return R.ok();
     }
 

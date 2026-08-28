@@ -2,26 +2,19 @@ package com.recycle.app.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.recycle.app.vo.HomeVO;
-import com.recycle.app.vo.StoreNearbyVO;
 import com.recycle.app.vo.TimeslotVO;
 import com.recycle.common.entity.content.Banner;
 import com.recycle.common.entity.content.Notice;
 import com.recycle.common.entity.recycle.Category;
-import com.recycle.common.entity.store.RecycleStation;
 import com.recycle.common.mapper.BannerMapper;
 import com.recycle.common.mapper.CategoryMapper;
 import com.recycle.common.mapper.NoticeMapper;
-import com.recycle.common.mapper.RecycleStationMapper;
-import com.recycle.common.util.GeoUtils;
-import com.recycle.common.util.JsonUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 
 @Service
@@ -30,12 +23,10 @@ public class AppHomeService {
 
     private static final List<String> PERIODS =
             List.of("09:00-11:00", "11:00-13:00", "14:00-16:00", "16:00-18:00");
-    private static final BigDecimal NEARBY_RADIUS_KM = BigDecimal.valueOf(10);
 
     private final BannerMapper bannerMapper;
     private final CategoryMapper categoryMapper;
     private final NoticeMapper noticeMapper;
-    private final RecycleStationMapper stationMapper;
 
     public HomeVO home() {
         LocalDateTime now = LocalDateTime.now();
@@ -94,31 +85,5 @@ public class AppHomeService {
             result.add(vo);
         }
         return result;
-    }
-
-    public List<StoreNearbyVO> nearby(BigDecimal longitude, BigDecimal latitude) {
-        List<RecycleStation> stations = stationMapper.selectList(new LambdaQueryWrapper<RecycleStation>()
-                .eq(RecycleStation::getAuditStatus, "approved")
-                .eq(RecycleStation::getStatus, 1));
-        return stations.stream()
-                .map(s -> {
-                    StoreNearbyVO vo = new StoreNearbyVO();
-                    vo.setId(s.getId());
-                    vo.setName(s.getName());
-                    vo.setAddress(s.getAddress());
-                    vo.setPhone(s.getPhone());
-                    vo.setBusinessHours(s.getBusinessHours());
-                    vo.setBusinessStatus(s.getBusinessStatus());
-                    vo.setLongitude(s.getLongitude());
-                    vo.setLatitude(s.getLatitude());
-                    vo.setCategoryIds(JsonUtils.toLongList(s.getCategoryIds()));
-                    vo.setPhotos(JsonUtils.toStringList(s.getPhotos()));
-                    vo.setDistanceKm(GeoUtils.distanceKm(longitude, latitude, s.getLongitude(), s.getLatitude()));
-                    return vo;
-                })
-                .filter(vo -> vo.getDistanceKm() == null || vo.getDistanceKm().compareTo(NEARBY_RADIUS_KM) <= 0)
-                .sorted(Comparator.comparing(StoreNearbyVO::getDistanceKm,
-                        Comparator.nullsLast(Comparator.naturalOrder())))
-                .toList();
     }
 }

@@ -20,7 +20,7 @@ public class OrderCreateDTO {
 
     private Long addressId;
 
-    /** 到店单门店 */
+    /** 回收站：上门/到店均必填（按门店报价成交） */
     private Long storeId;
 
     private LocalDate appointDate;

@@ -116,7 +116,10 @@ public class AppStoreService {
         vo.setCategoryIds(JsonUtils.toLongList(s.getCategoryIds()));
         vo.setPhotos(JsonUtils.toStringList(s.getPhotos()));
         vo.setDistanceKm(GeoUtils.distanceKm(longitude, latitude, s.getLongitude(), s.getLatitude()));
-        vo.setQuotedCount(stationPriceReader.quotedRows(s.getId()).size());
+        List<StationSkuPrice> quoted = stationPriceReader.quotedRows(s.getId());
+        Map<Long, Sku> quotedSkus = enabledSkus(quoted.stream()
+                .map(StationSkuPrice::getSkuId).distinct().toList());
+        vo.setQuotedCount((int) quoted.stream().filter(q -> quotedSkus.containsKey(q.getSkuId())).count());
         return vo;
     }
 
