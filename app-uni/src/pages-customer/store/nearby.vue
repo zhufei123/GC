@@ -1,15 +1,16 @@
 <template>
   <view class="nearby">
-    <!-- H5 地图（加载失败时仅展示列表） -->
-    <!-- #ifdef H5 -->
+    <!-- 地图(H5 按提供商渲染,其余端原生 map;失败时仅展示列表) -->
     <view v-if="!mapFailed" class="nearby__map-wrap">
-      <view id="nearby-map" class="nearby__map" />
-      <view v-if="!mapReady" class="nearby__map-loading">
-        <wd-loading color="#07c160" />
-        <text>地图加载中…</text>
-      </view>
+      <app-map-view
+        :latitude="center.latitude"
+        :longitude="center.longitude"
+        :markers="mapMarkers"
+        :selected-id="selectedStore?.id"
+        @marker-tap="onMarkerTap"
+        @fail="mapFailed = true"
+      />
     </view>
-    <!-- #endif -->
 
     <!-- 选中站点卡片(点击地图标记) -->
     <view v-if="selectedStore" class="picked card" @tap="goDetail(selectedStore)">
@@ -104,6 +105,16 @@
             <wd-button size="small" type="primary" plain @click.stop="goOrder(store)">
               {{ selectMode ? "选择" : "去下单" }}
             </wd-button>
+            <wd-button
+              v-if="store.phone"
+              size="small"
+              plain
+              custom-class="store-card__call"
+              @click.stop="callStore(store)"
+            >
+              <wd-icon name="phone" size="24rpx" />
+              电话
+            </wd-button>
           </view>
         </view>
 
@@ -115,7 +126,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from "vue";
-import { onLoad, onUnload } from "@dcloudio/uni-app";
+import { onLoad } from "@dcloudio/uni-app";
 import {
   getNearbyStores,
   cacheNearbyStores,
@@ -128,15 +139,31 @@ const stores = ref<StoreItem[]>([]);
 const loading = ref(true);
 const selectedStore = ref<StoreItem | null>(null);
 const selectMode = ref(false);
-const mapReady = ref(false);
 const mapFailed = ref(false);
 const keyword = ref("");
 const sortBy = ref<"distance" | "price">("distance");
 
-let center = { ...FALLBACK_LOCATION };
-let map: any = null;
-let leafletLib: any = null;
-let markerLayer: any = null;
+const center = ref({ ...FALLBACK_LOCATION });
+
+const mapMarkers = computed(() =>
+  stores.value
+    .filter((s) => {
+      const lat = Number(s.latitude);
+      const lng = Number(s.longitude);
+      return !!lat && !!lng && !Number.isNaN(lat) && !Number.isNaN(lng);
+    })
+    .map((s) => ({
+      id: s.id,
+      latitude: Number(s.latitude),
+      longitude: Number(s.longitude),
+      title: s.name,
+    }))
+);
+
+function onMarkerTap(marker: { id: string | number }) {
+  selectedStore.value =
+    stores.value.find((s) => String(s.id) === String(marker.id)) || null;
+}
 
 const displayedStores = computed(() => {
   const kw = keyword.value.trim().toLowerCase();
@@ -157,6 +184,11 @@ function formatDistance(km: number) {
   const n = Number(km);
   if (Number.isNaN(n)) return "";
   return n < 1 ? `${Math.round(n * 1000)}m` : `${n.toFixed(1)}km`;
+}
+
+function callStore(store: StoreItem) {
+  if (!store.phone) return;
+  uni.makePhoneCall({ phoneNumber: store.phone });
 }
 
 function onRowTap(store: StoreItem) {
@@ -191,8 +223,9 @@ function goOrder(store: StoreItem) {
 async function loadStores() {
   loading.value = true;
   try {
-    center = await resolveUserLocation();
-    stores.value = (await getNearbyStores(center.longitude, center.latitude, { radiusKm: 20 })) || [];
+    center.value = await resolveUserLocation();
+    stores.value =
+      (await getNearbyStores(center.value.longitude, center.value.latitude, { radiusKm: 20 })) || [];
     cacheNearbyStores(stores.value);
   } catch (e) {
     stores.value = [];
@@ -200,135 +233,13 @@ async function loadStores() {
   } finally {
     loading.value = false;
   }
-  syncMap();
-}
-
-/* ---------- H5 Leaflet 地图(非 H5 端不会调用，仅展示列表) ---------- */
-async function initMap() {
-  try {
-    await import("leaflet/dist/leaflet.css");
-    const mod: any = await import("leaflet");
-    leafletLib = mod.default || mod;
-    const el = document.getElementById("nearby-map");
-    if (!el) throw new Error("map container missing");
-    map = leafletLib
-      .map(el, { zoomControl: false })
-      .setView([center.latitude, center.longitude], 13);
-    leafletLib
-      .tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        maxZoom: 19,
-        attribution: "© OpenStreetMap",
-      })
-      .addTo(map);
-    markerLayer = leafletLib.layerGroup().addTo(map);
-    mapReady.value = true;
-    syncMap();
-  } catch (e) {
-    // 地图失败不影响列表
-    mapFailed.value = true;
-  }
-}
-
-function syncMap() {
-  if (!mapReady.value || !map || !leafletLib) return;
-  try {
-    markerLayer.clearLayers();
-    // 用户位置
-    leafletLib
-      .marker([center.latitude, center.longitude], {
-        icon: leafletLib.divIcon({
-          className: "",
-          html: '<div class="nearby-user-dot"></div>',
-          iconSize: [20, 20],
-          iconAnchor: [10, 10],
-        }),
-      })
-      .addTo(markerLayer);
-    const points: Array<[number, number]> = [[center.latitude, center.longitude]];
-    for (const store of stores.value) {
-      const lat = Number(store.latitude);
-      const lng = Number(store.longitude);
-      if (!lat || !lng || Number.isNaN(lat) || Number.isNaN(lng)) continue;
-      points.push([lat, lng]);
-      leafletLib
-        .marker([lat, lng], {
-          icon: leafletLib.divIcon({
-            className: "",
-            html: '<div class="nearby-store-pin"><div class="nearby-store-pin__dot"></div></div>',
-            iconSize: [30, 40],
-            iconAnchor: [15, 40],
-          }),
-        })
-        .on("click", () => {
-          selectedStore.value = store;
-        })
-        .addTo(markerLayer);
-    }
-    if (points.length > 1) {
-      map.fitBounds(points, { padding: [30, 30], maxZoom: 15 });
-    } else {
-      map.setView([center.latitude, center.longitude], 13);
-    }
-  } catch (e) {
-    /* 标记渲染失败不阻塞页面 */
-  }
 }
 
 onLoad((options) => {
   selectMode.value = options?.select === "1";
   loadStores();
-  // #ifdef H5
-  setTimeout(initMap, 0);
-  // #endif
-});
-
-onUnload(() => {
-  // #ifdef H5
-  if (map) {
-    try {
-      map.remove();
-    } catch (e) {
-      /* ignore */
-    }
-    map = null;
-  }
-  // #endif
 });
 </script>
-
-<!-- leaflet 标记为动态注入 DOM，样式不能 scoped -->
-<style lang="scss">
-.nearby-user-dot {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: #4d80f0;
-  border: 3px solid #fff;
-  box-shadow: 0 0 0 4px rgba(77, 128, 240, 0.25);
-  box-sizing: border-box;
-}
-
-.nearby-store-pin {
-  width: 30px;
-  height: 30px;
-  border-radius: 50% 50% 50% 0;
-  background: #07c160;
-  transform: rotate(-45deg);
-  border: 2px solid #fff;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-  box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  &__dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background: #fff;
-  }
-}
-</style>
 
 <style lang="scss" scoped>
 .nearby {
@@ -340,25 +251,6 @@ onUnload(() => {
     position: relative;
     height: 440rpx;
     background: #e8ecef;
-  }
-
-  &__map {
-    width: 100%;
-    height: 100%;
-  }
-
-  &__map-loading {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 16rpx;
-    color: #86909c;
-    font-size: 24rpx;
-    background: #f2f3f5;
-    z-index: 500;
   }
 }
 
@@ -561,6 +453,14 @@ onUnload(() => {
   &__action {
     flex-shrink: 0;
     align-self: center;
+    display: flex;
+    flex-direction: column;
+    gap: 12rpx;
+    align-items: stretch;
+  }
+
+  :deep(.store-card__call) {
+    color: #4e5969 !important;
   }
 }
 </style>
