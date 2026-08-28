@@ -1,0 +1,15 @@
+.idea/
+*.iml
+target/
+node_modules/
+dist/
+.DS_Store
+*.log
+.vite/
+unpackage/
+app-uni/dist/
+admin-web/dist/
+backend/**/target/
+application-local.yml
+!application-local.yml.example
+deploy/.env
