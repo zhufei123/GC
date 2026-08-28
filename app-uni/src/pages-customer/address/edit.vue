@@ -74,6 +74,8 @@ onLoad((options) => {
   if (options?.data) {
     try {
       Object.assign(form, JSON.parse(decodeURIComponent(options.data)));
+      // 后端返回 1/0，归一成布尔供 wd-switch 使用
+      form.isDefault = form.isDefault === true || Number(form.isDefault) === 1;
       uni.setNavigationBarTitle({ title: "编辑地址" });
     } catch (e) {
       /* 忽略非法参数 */
@@ -91,11 +93,24 @@ async function onSave() {
   if (!form.detail) return uni.showToast({ title: "请填写详细地址", icon: "none" });
 
   saving.value = true;
+  // 只提交 AddressDTO 需要的字段，避免把实体多余字段(id/userId/createTime)回传
+  const payload: AddressItem = {
+    receiver: form.receiver,
+    phone: form.phone,
+    province: form.province,
+    city: form.city,
+    district: form.district,
+    street: form.street,
+    detail: form.detail,
+    longitude: form.longitude,
+    latitude: form.latitude,
+    isDefault: !!form.isDefault,
+  };
   try {
     if (form.id) {
-      await updateAddress(String(form.id), form);
+      await updateAddress(String(form.id), payload);
     } else {
-      await createAddress(form);
+      await createAddress(payload);
     }
     uni.showToast({ title: "已保存", icon: "success" });
     setTimeout(() => uni.navigateBack(), 600);

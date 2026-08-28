@@ -38,9 +38,9 @@
             <text class="item-col item-col--right">小计</text>
           </view>
           <view v-for="(it, i) in lineItems" :key="i" class="item-row">
-            <text class="item-col item-col--name">{{ it.skuName || it.skuId }}</text>
+            <text class="item-col item-col--name">{{ it.skuName }}</text>
             <text class="item-col">{{ it.estimateWeight ? it.estimateWeight + "kg" : "-" }}</text>
-            <text class="item-col">{{ it.weight ? it.weight + "kg" : "-" }}</text>
+            <text class="item-col">{{ it.actualWeight ? it.actualWeight + "kg" : "-" }}</text>
             <text class="item-col item-col--right">{{ it.amount ? "¥" + it.amount : "-" }}</text>
           </view>
         </view>
@@ -82,14 +82,41 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
-import { getOrderDetail, cancelOrder, orderLineItems } from "@/api/order";
+import { getOrderDetail, cancelOrder } from "@/api/order";
 import type { OrderVO } from "@/api/order";
 import { statusText } from "@/utils/order-status";
 
 const order = ref<OrderVO | null>(null);
 let orderId = "";
 
-const lineItems = computed(() => orderLineItems(order.value));
+interface DetailRow {
+  skuName: string;
+  estimateWeight?: string;
+  actualWeight?: string;
+  amount?: string;
+}
+
+/** 预估/实收按 skuId 合并成行：预估列取 estimateItems，实收列取 actualItems */
+const lineItems = computed<DetailRow[]>(() => {
+  const o = order.value;
+  if (!o) return [];
+  const actualBySku = new Map((o.actualItems || []).map((it) => [it.skuId, it]));
+  const rows: DetailRow[] = (o.estimateItems || []).map((it) => {
+    const actual = actualBySku.get(it.skuId);
+    if (actual) actualBySku.delete(it.skuId);
+    return {
+      skuName: it.skuName || it.skuId,
+      estimateWeight: it.weight || it.estimateWeight,
+      actualWeight: actual?.weight,
+      amount: actual ? actual.amount : it.amount,
+    };
+  });
+  // 称重时新增的品类（无预估）
+  actualBySku.forEach((it) => {
+    rows.push({ skuName: it.skuName || it.skuId, actualWeight: it.weight, amount: it.amount });
+  });
+  return rows;
+});
 
 const statusIcon = computed(() => {
   switch (order.value?.status) {

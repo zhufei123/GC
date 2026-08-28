@@ -30,10 +30,8 @@
         <view class="card__title">回收明细</view>
         <view v-if="lineItems.length">
           <view v-for="(it, i) in lineItems" :key="i" class="item-row">
-            <text class="item-row__name">{{ it.skuName || it.skuId }}</text>
-            <text class="item-row__meta">
-              {{ it.weight ? it.weight + "kg" : it.estimateWeight ? "预估" + it.estimateWeight + "kg" : "-" }}
-            </text>
+            <text class="item-row__name">{{ it.skuName }}</text>
+            <text class="item-row__meta">{{ it.meta }}</text>
             <text class="item-row__amount">{{ it.amount ? "¥" + it.amount : "-" }}</text>
           </view>
         </view>
@@ -82,7 +80,21 @@ const order = ref<OrderVO | null>(null);
 let orderId = "";
 let loadedOnce = false;
 
-const lineItems = computed(() => orderLineItems(order.value));
+/** 已称重取实收明细，否则展示预估明细并标注 */
+const lineItems = computed(() => {
+  const o = order.value;
+  if (!o) return [];
+  const hasActual = !!o.actualItems?.length;
+  const items = hasActual ? o.actualItems! : orderLineItems(o);
+  return items.map((it) => {
+    const weight = it.weight || it.estimateWeight;
+    return {
+      skuName: it.skuName || it.skuId,
+      meta: weight ? (hasActual ? `${weight}kg` : `预估 ${weight}kg`) : "-",
+      amount: it.amount,
+    };
+  });
+});
 
 async function load() {
   try {
