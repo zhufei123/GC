@@ -143,14 +143,14 @@ public class AdminTradeService {
         addNode(timeline, "SERVING", "开始服务", order.getServedAt());
         addNode(timeline, "WEIGHED", "称重", order.getWeighedAt());
         addNode(timeline, "COMPLETED", "完成", order.getCompletedAt());
-        addNode(timeline, "CANCELLED", "取消", order.getCancelledAt());
+        if (order.getCancelledAt() != null || "CANCELLED".equals(order.getStatus())) {
+            addNode(timeline, "CANCELLED", "取消", order.getCancelledAt());
+        }
         return timeline;
     }
 
+    /** 未到达的节点也下发，前端按当前状态点亮 */
     private void addNode(List<AdminOrderVO.TimelineVO> timeline, String status, String label, LocalDateTime time) {
-        if (time == null) {
-            return;
-        }
         AdminOrderVO.TimelineVO node = new AdminOrderVO.TimelineVO();
         node.setStatus(status);
         node.setLabel(label);

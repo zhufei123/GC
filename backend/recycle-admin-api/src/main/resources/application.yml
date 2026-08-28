@@ -10,6 +10,10 @@ spring:
     # java.util.Date 用；java.time 字段以 @JsonFormat 为准（GMT+8）
     date-format: yyyy-MM-dd HH:mm:ss
     time-zone: GMT+8
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 20MB
 
 server:
   port: 8080
@@ -17,6 +21,9 @@ server:
     encoding:
       charset: UTF-8
       force: true
+  tomcat:
+    max-http-form-post-size: 20MB
+    max-swallow-size: 20MB
 
 mybatis-plus:
   configuration:

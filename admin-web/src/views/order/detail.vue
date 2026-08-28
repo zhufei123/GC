@@ -65,10 +65,13 @@ const canCancel = computed(() => {
   return !!s && s !== 'COMPLETED' && s !== 'CANCELLED'
 })
 
-/** 时间线节点样式:当前状态高亮,已经过的节点标记完成 */
+/** 时间线：当前状态 primary，已发生 success，未到达默认灰 */
 function timelineType(item: OrderTimelineVO): 'primary' | 'success' | undefined {
-  if (!item.status || !detail.value?.status) return undefined
-  return item.status === detail.value.status ? 'primary' : 'success'
+  const current = detail.value?.status
+  if (!item.status || !current) return undefined
+  if (item.status === current) return 'primary'
+  if (item.time || item.createdAt) return 'success'
+  return undefined
 }
 
 async function handleCancel(): Promise<void> {
@@ -217,8 +220,9 @@ async function handleCancel(): Promise<void> {
             <el-timeline-item
               v-for="(item, i) in timeline"
               :key="i"
-              :timestamp="item.time || item.createdAt || ''"
+              :timestamp="item.time || item.createdAt || (item.status === detail?.status ? '进行中' : '未到达')"
               :type="timelineType(item)"
+              :hollow="!(item.time || item.createdAt) && item.status !== detail?.status"
             >
               <div class="timeline-title">
                 {{ item.title || item.label || orderStatusInfo(item.status).label }}
