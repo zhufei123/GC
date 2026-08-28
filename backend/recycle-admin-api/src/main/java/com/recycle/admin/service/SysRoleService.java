@@ -58,12 +58,15 @@ public class SysRoleService {
 
     @Transactional
     public void delete(Long id) {
-        require(id);
+        SysRole role = require(id);
         Long used = adminRoleMapper.selectCount(new LambdaQueryWrapper<SysAdminRole>()
                 .eq(SysAdminRole::getRoleId, id));
         if (used > 0) {
             throw new BizException(ErrorCode.PARAM_ERROR, "角色已分配管理员，不能删除");
         }
+        // 逻辑删除占用 (code, deleted=1)，改写 code 以免挡住同编码重建后再删
+        role.setCode(role.getCode() + "~" + id);
+        roleMapper.updateById(role);
         roleMapper.deleteById(id);
         roleMenuMapper.delete(new LambdaQueryWrapper<SysRoleMenu>().eq(SysRoleMenu::getRoleId, id));
     }
