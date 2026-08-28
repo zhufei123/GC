@@ -53,7 +53,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { getOrderPool, acceptOrder } from "@/api/boss";
-import type { OrderVO } from "@/api/order";
+import { orderLineItems, type OrderVO } from "@/api/order";
 
 const list = ref<OrderVO[]>([]);
 const loading = ref(false);
@@ -63,9 +63,10 @@ const pageSize = 10;
 let loadedOnce = false;
 
 function itemsSummary(item: OrderVO) {
-  if (!item.items?.length) return "";
-  return item.items
-    .map((it) => `${it.skuName || it.skuId}${it.estimateWeight ? " " + it.estimateWeight + "kg" : ""}`)
+  const lines = orderLineItems(item);
+  if (!lines.length) return "";
+  return lines
+    .map((it) => `${it.skuName || it.skuId}${it.estimateWeight || it.weight ? " " + (it.estimateWeight || it.weight) + "kg" : ""}`)
     .join("、");
 }
 

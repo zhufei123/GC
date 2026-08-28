@@ -70,17 +70,23 @@ public class BossService {
         vo.setTodayAcceptedCount(orderMapper.selectCount(new LambdaQueryWrapper<RecycleOrder>()
                 .eq(RecycleOrder::getStationId, station.getId())
                 .ge(RecycleOrder::getAcceptedAt, todayStart)));
-        vo.setTodayCompletedCount(orderMapper.selectCount(new LambdaQueryWrapper<RecycleOrder>()
+        List<RecycleOrder> todayCompleted = orderMapper.selectList(new LambdaQueryWrapper<RecycleOrder>()
                 .eq(RecycleOrder::getStationId, station.getId())
                 .eq(RecycleOrder::getStatus, "COMPLETED")
-                .ge(RecycleOrder::getCompletedAt, todayStart)));
-        BigDecimal todayAmount = orderMapper.selectList(new LambdaQueryWrapper<RecycleOrder>()
-                        .eq(RecycleOrder::getStationId, station.getId())
-                        .eq(RecycleOrder::getStatus, "COMPLETED")
-                        .ge(RecycleOrder::getCompletedAt, todayStart))
-                .stream().map(RecycleOrder::getActualAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        vo.setTodayAmount(todayAmount);
+                .ge(RecycleOrder::getCompletedAt, todayStart));
+        vo.setTodayCompletedCount(todayCompleted.size());
+        vo.setTodayAmount(todayCompleted.stream()
+                .map(RecycleOrder::getActualAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add));
+        BigDecimal todayWeight = BigDecimal.ZERO;
+        if (!todayCompleted.isEmpty()) {
+            todayWeight = orderItemMapper.selectList(new LambdaQueryWrapper<OrderItem>()
+                            .in(OrderItem::getOrderId, todayCompleted.stream().map(RecycleOrder::getId).toList())
+                            .eq(OrderItem::getItemType, "ACTUAL"))
+                    .stream().map(OrderItem::getWeight)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+        }
+        vo.setTodayWeightKg(todayWeight);
         vo.setPendingCount(orderMapper.selectCount(new LambdaQueryWrapper<RecycleOrder>()
                 .eq(RecycleOrder::getStationId, station.getId())
                 .eq(RecycleOrder::getStatus, "ACCEPTED")));
@@ -98,7 +104,8 @@ public class BossService {
                         .eq(RecycleOrder::getStatus, "PENDING")
                         .orderByAsc(RecycleOrder::getCreateTime));
         return PageResult.of(page, o -> {
-            OrderVO vo = orderAssembler.toVO(o, false, true);
+            // 带预估明细，供大厅展示品类摘要
+            OrderVO vo = orderAssembler.toVO(o, true, true);
             vo.setReceiver(maskName(vo.getReceiver()));
             return vo;
         });

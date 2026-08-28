@@ -3,19 +3,26 @@ import type { PageQuery, PageResult } from '@/types/api'
 
 /* ---------------- Banner ---------------- */
 
+/** 跳转类型:NONE 不跳转 / PAGE 页面路径 / RICH 富文本 */
+export type BannerLinkType = 'NONE' | 'PAGE' | 'RICH'
+
 export interface BannerVO {
   id: string
   title?: string
   image?: string
+  linkType?: BannerLinkType | string
   linkUrl?: string
   sort?: number
   status?: number
+  startTime?: string
+  endTime?: string
   createdAt?: string
 }
 
 export interface BannerForm {
   title: string
   image: string
+  linkType: BannerLinkType | string
   linkUrl?: string
   sort: number
   status: number

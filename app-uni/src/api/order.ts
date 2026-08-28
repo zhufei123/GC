@@ -31,16 +31,28 @@ export interface OrderVO {
   estimateAmount?: string;
   actualAmount?: string;
   createTime?: string;
-  items?: Array<{
-    skuId: string;
-    skuName?: string;
-    estimateWeight?: string;
-    weight?: string;
-    price?: string;
-    amount?: string;
-  }>;
+  estimateItems?: OrderLineItem[];
+  actualItems?: OrderLineItem[];
+  items?: OrderLineItem[];
   remark?: string;
   cancelReason?: string;
+}
+
+export interface OrderLineItem {
+  skuId: string;
+  skuName?: string;
+  estimateWeight?: string;
+  weight?: string;
+  price?: string;
+  amount?: string;
+}
+
+/** 兼容后端 items / estimateItems / actualItems */
+export function orderLineItems(order?: OrderVO | null): OrderLineItem[] {
+  if (!order) return [];
+  if (order.items?.length) return order.items;
+  if (order.actualItems?.length) return order.actualItems;
+  return order.estimateItems || [];
 }
 
 export function createOrder(data: CreateOrderData) {

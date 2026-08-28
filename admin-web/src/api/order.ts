@@ -51,36 +51,38 @@ export interface OrderTimelineVO {
   createdAt?: string
 }
 
+/** 对齐后端 AdminOrderVO */
 export interface OrderVO {
   id: string
   orderNo?: string
   type?: string
   status?: OrderStatus | string
   userId?: string
-  userNickname?: string
-  userPhone?: string
+  /** 联系人(下单地址快照) */
+  receiver?: string
+  /** 联系电话(列表脱敏,详情明文) */
+  phone?: string
   stationId?: string
   stationName?: string
-  storeName?: string
   appointDate?: string
   appointPeriod?: string
   estimateAmount?: string
-  totalAmount?: string
-  confirmAmount?: string
-  addressSnapshot?: Record<string, unknown> | string
+  /** 实收金额(称重确认后) */
+  actualAmount?: string
   address?: string
+  addressSnapshot?: Record<string, unknown> | string
   estimateItems?: OrderItemVO[]
-  items?: OrderItemVO[]
   actualItems?: OrderItemVO[]
   images?: string[]
   weighImages?: string[]
   remark?: string
+  cancelBy?: string
   cancelReason?: string
   timeline?: OrderTimelineVO[]
-  logs?: OrderTimelineVO[]
   createdAt?: string
   createTime?: string
   completedAt?: string
+  cancelledAt?: string
 }
 
 export function getOrderPage(params: PageQuery) {

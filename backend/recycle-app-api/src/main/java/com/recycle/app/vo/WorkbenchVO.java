@@ -15,6 +15,8 @@ public class WorkbenchVO {
     private long todayAcceptedCount;
     private long todayCompletedCount;
     private BigDecimal todayAmount;
+    /** 今日完成订单实收总重量(kg) */
+    private BigDecimal todayWeightKg;
     private long servingCount;
     /** 待上门（已接单未开始服务） */
     private long pendingCount;

@@ -36,18 +36,13 @@ async function loadData(): Promise<void> {
 onMounted(loadData)
 
 const estimateItems = computed<OrderItemVO[]>(() => detail.value?.estimateItems ?? [])
-const actualItems = computed<OrderItemVO[]>(
-  () => detail.value?.actualItems ?? detail.value?.items ?? [],
-)
+const actualItems = computed<OrderItemVO[]>(() => detail.value?.actualItems ?? [])
 const allImages = computed<string[]>(() => [
   ...(detail.value?.images ?? []),
   ...(detail.value?.weighImages ?? []),
 ])
 
-const timeline = computed<OrderTimelineVO[]>(() => {
-  const t = detail.value?.timeline ?? detail.value?.logs ?? []
-  return Array.isArray(t) ? t : []
-})
+const timeline = computed<OrderTimelineVO[]>(() => detail.value?.timeline ?? [])
 
 const addressText = computed(() => {
   const d = detail.value
@@ -127,14 +122,14 @@ async function handleCancel(): Promise<void> {
       <el-col :span="16">
         <el-card shadow="never" header="基本信息" class="mb16">
           <el-descriptions :column="2" border>
-            <el-descriptions-item label="用户">
-              {{ detail?.userNickname || '-' }}
+            <el-descriptions-item label="联系人">
+              {{ detail?.receiver || '-' }}
             </el-descriptions-item>
-            <el-descriptions-item label="用户手机">
-              {{ detail?.userPhone || '-' }}
+            <el-descriptions-item label="联系电话">
+              {{ detail?.phone || '-' }}
             </el-descriptions-item>
             <el-descriptions-item label="回收站">
-              {{ detail?.stationName || detail?.storeName || '-' }}
+              {{ detail?.stationName || '-' }}
             </el-descriptions-item>
             <el-descriptions-item label="预约时间">
               {{ detail?.appointDate ? `${detail.appointDate} ${detail.appointPeriod ?? ''}` : '-' }}
@@ -187,9 +182,9 @@ async function handleCancel(): Promise<void> {
               <el-empty description="尚未称重" :image-size="60" />
             </template>
           </el-table>
-          <div v-if="detail?.totalAmount || detail?.confirmAmount" class="amount-row">
+          <div v-if="detail?.actualAmount" class="amount-row">
             实收总额:
-            <span class="amount total">¥{{ detail?.totalAmount || detail?.confirmAmount }}</span>
+            <span class="amount total">¥{{ detail.actualAmount }}</span>
           </div>
         </el-card>
 

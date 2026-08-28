@@ -30,14 +30,14 @@
       <!-- 明细 -->
       <view class="card">
         <view class="card__title">回收明细</view>
-        <view v-if="order.items && order.items.length">
+        <view v-if="lineItems.length">
           <view class="item-head">
             <text class="item-col item-col--name">品类</text>
             <text class="item-col">预估</text>
             <text class="item-col">实收</text>
             <text class="item-col item-col--right">小计</text>
           </view>
-          <view v-for="(it, i) in order.items" :key="i" class="item-row">
+          <view v-for="(it, i) in lineItems" :key="i" class="item-row">
             <text class="item-col item-col--name">{{ it.skuName || it.skuId }}</text>
             <text class="item-col">{{ it.estimateWeight ? it.estimateWeight + "kg" : "-" }}</text>
             <text class="item-col">{{ it.weight ? it.weight + "kg" : "-" }}</text>
@@ -82,12 +82,14 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
-import { getOrderDetail, cancelOrder } from "@/api/order";
+import { getOrderDetail, cancelOrder, orderLineItems } from "@/api/order";
 import type { OrderVO } from "@/api/order";
 import { statusText } from "@/utils/order-status";
 
 const order = ref<OrderVO | null>(null);
 let orderId = "";
+
+const lineItems = computed(() => orderLineItems(order.value));
 
 const statusIcon = computed(() => {
   switch (order.value?.status) {

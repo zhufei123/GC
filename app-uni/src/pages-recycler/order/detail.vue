@@ -28,8 +28,8 @@
 
       <view class="card">
         <view class="card__title">回收明细</view>
-        <view v-if="order.items && order.items.length">
-          <view v-for="(it, i) in order.items" :key="i" class="item-row">
+        <view v-if="lineItems.length">
+          <view v-for="(it, i) in lineItems" :key="i" class="item-row">
             <text class="item-row__name">{{ it.skuName || it.skuId }}</text>
             <text class="item-row__meta">
               {{ it.weight ? it.weight + "kg" : it.estimateWeight ? "预估" + it.estimateWeight + "kg" : "-" }}
@@ -72,15 +72,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import { getBossOrderDetail, startService } from "@/api/boss";
-import type { OrderVO } from "@/api/order";
+import { orderLineItems, type OrderVO } from "@/api/order";
 import { statusText, statusType } from "@/utils/order-status";
 
 const order = ref<OrderVO | null>(null);
 let orderId = "";
 let loadedOnce = false;
+
+const lineItems = computed(() => orderLineItems(order.value));
 
 async function load() {
   try {

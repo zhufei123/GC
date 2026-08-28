@@ -150,11 +150,14 @@ function goDetail(row: OrderVO): void {
             </el-link>
           </template>
         </el-table-column>
-        <el-table-column label="用户" width="130">
-          <template #default="{ row }">{{ row.userNickname || row.userPhone || '-' }}</template>
+        <el-table-column label="联系人" width="150">
+          <template #default="{ row }">
+            <div>{{ row.receiver || '-' }}</div>
+            <div v-if="row.phone" class="sub-text">{{ row.phone }}</div>
+          </template>
         </el-table-column>
         <el-table-column label="回收站" min-width="140" show-overflow-tooltip>
-          <template #default="{ row }">{{ row.stationName || row.storeName || '-' }}</template>
+          <template #default="{ row }">{{ row.stationName || '-' }}</template>
         </el-table-column>
         <el-table-column label="类型" width="100" align="center">
           <template #default="{ row }">
@@ -170,9 +173,7 @@ function goDetail(row: OrderVO): void {
         </el-table-column>
         <el-table-column label="金额(元)" width="110" align="right">
           <template #default="{ row }">
-            <span v-if="row.totalAmount || row.confirmAmount" class="amount">
-              ¥{{ row.totalAmount || row.confirmAmount }}
-            </span>
+            <span v-if="row.actualAmount" class="amount">¥{{ row.actualAmount }}</span>
             <span v-else-if="row.estimateAmount">预估 ¥{{ row.estimateAmount }}</span>
             <span v-else>-</span>
           </template>
@@ -220,5 +221,10 @@ function goDetail(row: OrderVO): void {
 .amount {
   color: #e6a23c;
   font-weight: 600;
+}
+
+.sub-text {
+  font-size: 12px;
+  color: #909399;
 }
 </style>

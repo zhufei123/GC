@@ -124,14 +124,8 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
-import {
-  getWeighInit,
-  getBossOrderDetail,
-  getAvailableSkus,
-  submitWeigh,
-  completeOrder,
-} from "@/api/boss";
-import type { OrderVO } from "@/api/order";
+import { getWeighInit, getBossOrderDetail, getAvailableSkus, submitWeigh, completeOrder } from "@/api/boss";
+import { orderLineItems, type OrderVO } from "@/api/order";
 
 interface WeighRow {
   skuId: string;
@@ -180,7 +174,7 @@ async function load() {
     lockedAmount.value = data.actualAmount || "0.00";
     return;
   }
-  rows.value = (data.items || []).map((it) => ({
+  rows.value = orderLineItems(data).map((it) => ({
     skuId: it.skuId,
     skuName: it.skuName || it.skuId,
     price: it.price,

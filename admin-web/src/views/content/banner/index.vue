@@ -40,9 +40,16 @@ const submitting = ref(false)
 const editId = ref('')
 const formRef = ref<FormInstance>()
 
+const LINK_TYPE_MAP: Record<string, string> = {
+  NONE: '不跳转',
+  PAGE: '页面',
+  RICH: '富文本',
+}
+
 const form = reactive({
   title: '',
   image: '',
+  linkType: 'NONE',
   linkUrl: '',
   sort: 0,
   status: 1,
@@ -51,12 +58,25 @@ const form = reactive({
 const rules: FormRules = {
   title: [{ required: true, message: '请输入标题', trigger: 'blur' }],
   image: [{ required: true, message: '请输入图片 URL', trigger: 'blur' }],
+  linkUrl: [
+    {
+      validator: (_rule, value: string, callback) => {
+        if (form.linkType !== 'NONE' && !value) {
+          callback(new Error('请输入跳转内容'))
+        } else {
+          callback()
+        }
+      },
+      trigger: 'blur',
+    },
+  ],
 }
 
 function openDialog(row?: BannerVO): void {
   editId.value = row?.id ?? ''
   form.title = row?.title ?? ''
   form.image = row?.image ?? ''
+  form.linkType = row?.linkType ?? 'NONE'
   form.linkUrl = row?.linkUrl ?? ''
   form.sort = row?.sort ?? 0
   form.status = row?.status ?? 1
