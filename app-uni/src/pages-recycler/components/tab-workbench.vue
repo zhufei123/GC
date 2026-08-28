@@ -66,14 +66,26 @@
 
       <!-- 我的报价入口 -->
       <view class="price-entry" @tap="goPrice">
-        <view class="price-entry__icon">
-          <wd-icon name="money-circle" size="44rpx" color="#07c160" />
+        <view class="price-entry__head">
+          <view class="price-entry__icon">
+            <wd-icon name="money-circle" size="44rpx" color="#07c160" />
+          </view>
+          <view class="price-entry__info">
+            <view class="price-entry__title">
+              我的报价
+              <wd-tag type="warning" plain custom-class="price-entry__hint">记得及时报价</wd-tag>
+            </view>
+            <view class="price-entry__desc">发布本站回收价，用户按报价选站</view>
+          </view>
+          <wd-icon name="arrow-right" size="28rpx" color="#c0c4cc" />
         </view>
-        <view class="price-entry__info">
-          <view class="price-entry__title">我的报价</view>
-          <view class="price-entry__desc">发布本站回收价，用户按报价选站</view>
+        <view v-if="recentQuotes.length" class="price-entry__recent">
+          <view v-for="q in recentQuotes" :key="q.skuId" class="price-entry__recent-row">
+            <text class="price-entry__recent-name">{{ q.skuName }}</text>
+            <text class="price-entry__recent-price">¥{{ q.price }}/{{ q.unit || "kg" }}</text>
+            <text class="price-entry__recent-time">{{ shortTime(q.updatedAt) }}</text>
+          </view>
         </view>
-        <wd-icon name="arrow-right" size="28rpx" color="#c0c4cc" />
       </view>
 
       <!-- 抢单入口 -->
@@ -95,8 +107,8 @@
 
 <script setup lang="ts">
 import { ref, reactive } from "vue";
-import { getWorkbench, updateBusinessStatus } from "@/api/boss";
-import type { WorkbenchData } from "@/api/boss";
+import { getWorkbench, updateBusinessStatus, getStationPrices } from "@/api/boss";
+import type { WorkbenchData, StationPriceItem } from "@/api/boss";
 import { useUserStore } from "@/store/user";
 
 defineEmits<{ (e: "switch-tab", index: number): void }>();
@@ -104,8 +116,10 @@ defineEmits<{ (e: "switch-tab", index: number): void }>();
 const userStore = useUserStore();
 const data = reactive<WorkbenchData>({});
 const businessOn = ref(true);
+const recentQuotes = ref<StationPriceItem[]>([]);
 
 async function refresh() {
+  loadRecentQuotes();
   try {
     const res = await getWorkbench();
     Object.assign(data, res || {});
@@ -119,6 +133,25 @@ async function refresh() {
   } catch (e) {
     /* 保持现有数据 */
   }
+}
+
+/** 最近更新的 3 条报价，提醒老板价目是否过期 */
+async function loadRecentQuotes() {
+  try {
+    const res = await getStationPrices();
+    recentQuotes.value = (res?.list || [])
+      .filter((q) => q.status === 1 && q.price != null && q.updatedAt)
+      .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)))
+      .slice(0, 3);
+  } catch (e) {
+    recentQuotes.value = [];
+  }
+}
+
+/** "2026-08-28 10:20:00" -> "08-28 10:20" */
+function shortTime(t?: string) {
+  if (!t) return "";
+  return t.length >= 16 ? t.slice(5, 16) : t;
 }
 
 function goPrice() {
@@ -276,9 +309,12 @@ defineExpose({ refresh });
   background: #fff;
   border-radius: 24rpx;
   padding: 28rpx;
-  display: flex;
-  align-items: center;
-  gap: 22rpx;
+
+  &__head {
+    display: flex;
+    align-items: center;
+    gap: 22rpx;
+  }
 
   &__icon {
     width: 88rpx;
@@ -288,15 +324,20 @@ defineExpose({ refresh });
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
   }
 
   &__info {
     flex: 1;
+    min-width: 0;
   }
 
   &__title {
     font-size: 30rpx;
     font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 12rpx;
   }
 
   &__desc {
@@ -304,6 +345,45 @@ defineExpose({ refresh });
     font-size: 24rpx;
     color: #86909c;
   }
+
+  &__recent {
+    margin-top: 20rpx;
+    border-top: 1rpx solid #f2f3f5;
+    padding-top: 8rpx;
+  }
+
+  &__recent-row {
+    display: flex;
+    align-items: center;
+    padding: 12rpx 0;
+    font-size: 24rpx;
+  }
+
+  &__recent-name {
+    flex: 1;
+    min-width: 0;
+    color: #4e5969;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__recent-price {
+    flex-shrink: 0;
+    color: #ff4d4f;
+    font-weight: 600;
+    margin-right: 20rpx;
+  }
+
+  &__recent-time {
+    flex-shrink: 0;
+    color: #c0c4cc;
+    font-size: 22rpx;
+  }
+}
+
+:deep(.price-entry__hint) {
+  flex-shrink: 0;
 }
 
 .hall-banner {
