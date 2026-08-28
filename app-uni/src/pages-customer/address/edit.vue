@@ -31,6 +31,35 @@
         <text class="form-row__label">详细地址</text>
         <input v-model="form.detail" class="form-row__input" placeholder="小区、楼栋、门牌号" />
       </view>
+      <view class="form-row">
+        <text class="form-row__label">经纬度</text>
+        <view class="form-row__region">
+          <input
+            class="form-row__region-input"
+            type="digit"
+            :value="lngInput"
+            placeholder="经度"
+            @input="(e: any) => (lngInput = e.detail.value)"
+          />
+          <input
+            class="form-row__region-input"
+            type="digit"
+            :value="latInput"
+            placeholder="纬度"
+            @input="(e: any) => (latInput = e.detail.value)"
+          />
+        </view>
+      </view>
+      <view class="form-row form-row--locate">
+        <text class="form-row__label" />
+        <view class="locate">
+          <wd-button size="small" plain :loading="locating" @click="useCurrentLocation">
+            <wd-icon name="location" size="26rpx" />
+            使用当前定位
+          </wd-button>
+          <text class="locate__hint">用于附近回收站按距离排序</text>
+        </view>
+      </view>
       <view class="form-row form-row--last">
         <text class="form-row__label">设为默认</text>
         <wd-switch v-model="form.isDefault" size="44rpx" />
@@ -69,6 +98,10 @@ const form = reactive<AddressItem>({
   isDefault: false,
 });
 const saving = ref(false);
+const locating = ref(false);
+/** 经纬度以字符串编辑，保存时转 number */
+const lngInput = ref("");
+const latInput = ref("");
 
 onLoad((options) => {
   if (options?.data) {
@@ -76,6 +109,8 @@ onLoad((options) => {
       Object.assign(form, JSON.parse(decodeURIComponent(options.data)));
       // 后端返回 1/0，归一成布尔供 wd-switch 使用
       form.isDefault = form.isDefault === true || Number(form.isDefault) === 1;
+      if (form.longitude != null) lngInput.value = String(form.longitude);
+      if (form.latitude != null) latInput.value = String(form.latitude);
       uni.setNavigationBarTitle({ title: "编辑地址" });
     } catch (e) {
       /* 忽略非法参数 */
@@ -85,12 +120,55 @@ onLoad((options) => {
   }
 });
 
+function useCurrentLocation() {
+  locating.value = true;
+  uni.getLocation({
+    type: "wgs84",
+    success: (res) => {
+      lngInput.value = String(Number(res.longitude.toFixed(6)));
+      latInput.value = String(Number(res.latitude.toFixed(6)));
+      uni.showToast({ title: "已获取当前定位", icon: "success" });
+    },
+    fail: () => {
+      uni.showToast({ title: "定位失败，请检查定位权限或手动填写", icon: "none" });
+    },
+    complete: () => {
+      locating.value = false;
+    },
+  });
+}
+
+/** 返回 { longitude, latitude } 或 null(未填)；非法时返回 "invalid" */
+function parseLngLat(): { longitude?: number; latitude?: number } | "invalid" {
+  const lngStr = lngInput.value.trim();
+  const latStr = latInput.value.trim();
+  if (!lngStr && !latStr) return {};
+  const lng = Number(lngStr);
+  const lat = Number(latStr);
+  if (
+    !lngStr ||
+    !latStr ||
+    Number.isNaN(lng) ||
+    Number.isNaN(lat) ||
+    lng < -180 ||
+    lng > 180 ||
+    lat < -90 ||
+    lat > 90
+  ) {
+    return "invalid";
+  }
+  return { longitude: lng, latitude: lat };
+}
+
 async function onSave() {
   if (!form.receiver) return uni.showToast({ title: "请填写联系人", icon: "none" });
   if (!/^1\d{10}$/.test(form.phone)) return uni.showToast({ title: "手机号格式不正确", icon: "none" });
   if (!form.province || !form.city || !form.district)
     return uni.showToast({ title: "请填写省市区", icon: "none" });
   if (!form.detail) return uni.showToast({ title: "请填写详细地址", icon: "none" });
+  const lngLat = parseLngLat();
+  if (lngLat === "invalid")
+    return uni.showToast({ title: "经纬度格式不正确（经度±180 / 纬度±90）", icon: "none" });
 
   saving.value = true;
   // 只提交 AddressDTO 需要的字段，避免把实体多余字段(id/userId/createTime)回传
@@ -102,8 +180,8 @@ async function onSave() {
     district: form.district,
     street: form.street,
     detail: form.detail,
-    longitude: form.longitude,
-    latitude: form.latitude,
+    longitude: lngLat.longitude,
+    latitude: lngLat.latitude,
     isDefault: !!form.isDefault,
   };
   try {
@@ -171,6 +249,10 @@ function onDelete() {
     justify-content: space-between;
   }
 
+  &--locate {
+    min-height: 88rpx;
+  }
+
   &__label {
     width: 160rpx;
     font-size: 28rpx;
@@ -195,6 +277,18 @@ function onDelete() {
     background: #f7f8fa;
     border-radius: 12rpx;
     padding: 12rpx 16rpx;
+  }
+}
+
+.locate {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+
+  &__hint {
+    font-size: 22rpx;
+    color: #c0c4cc;
   }
 }
 </style>

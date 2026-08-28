@@ -49,6 +49,13 @@
             <text class="quote-card__amount">¥{{ q.price }}</text>
             <text class="quote-card__unit">/{{ q.unit || "kg" }}</text>
             <view v-if="q.guide" class="quote-card__guide">指导价</view>
+            <view
+              v-else-if="formatUpdated(q.priceUpdatedAt)"
+              class="quote-card__updated"
+              :class="{ 'quote-card__updated--fresh': formatUpdated(q.priceUpdatedAt) === '今日更新' }"
+            >
+              {{ formatUpdated(q.priceUpdatedAt) }}
+            </view>
           </template>
           <wd-tag v-else plain>暂无报价</wd-tag>
         </view>
@@ -98,6 +105,18 @@ function formatDistance(km: number) {
   const n = Number(km);
   if (Number.isNaN(n)) return "";
   return n < 1 ? `${Math.round(n * 1000)}m` : `${n.toFixed(1)}km`;
+}
+
+/** 报价更新时间 -> 今日更新 / N天前（iOS 不支持 yyyy-MM-dd HH:mm:ss，替换为斜杠） */
+function formatUpdated(dateStr?: string) {
+  if (!dateStr) return "";
+  const t = new Date(String(dateStr).replace(/-/g, "/")).getTime();
+  if (Number.isNaN(t)) return "";
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  if (t >= todayStart) return "今日更新";
+  const days = Math.ceil((todayStart - t) / 86400000);
+  return `${days}天前`;
 }
 
 function goStore(q: SkuQuoteItem) {
@@ -303,6 +322,16 @@ onLoad((options) => {
     margin-top: 4rpx;
     font-size: 20rpx;
     color: #ff8f1f;
+  }
+
+  &__updated {
+    margin-top: 4rpx;
+    font-size: 20rpx;
+    color: #86909c;
+
+    &--fresh {
+      color: $theme-color;
+    }
   }
 }
 </style>

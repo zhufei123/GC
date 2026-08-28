@@ -3,6 +3,22 @@
     <view v-if="loading" class="detail__loading"><wd-loading color="#07c160" /></view>
 
     <template v-else-if="store">
+      <!-- 门店照片 -->
+      <view v-if="photos.length" class="gallery">
+        <swiper
+          class="gallery__swiper"
+          :indicator-dots="photos.length > 1"
+          indicator-active-color="#07c160"
+          circular
+          :autoplay="photos.length > 1"
+          :interval="4000"
+        >
+          <swiper-item v-for="(photo, pi) in photos" :key="pi" @tap="previewPhoto(pi)">
+            <image class="gallery__img" :src="photo" mode="aspectFill" />
+          </swiper-item>
+        </swiper>
+      </view>
+
       <!-- 门店信息 -->
       <view class="card head">
         <view class="head__top">
@@ -88,6 +104,7 @@ import { onLoad } from "@dcloudio/uni-app";
 import { getStoreDetail, getStorePrices, getCachedStore, resolveUserLocation } from "@/api/store";
 import type { StoreItem, StorePriceItem } from "@/api/store";
 import { getSkuList } from "@/api/goods";
+import { openNavigation } from "@/utils/map-nav";
 
 const store = ref<StoreItem | null>(null);
 const prices = ref<StorePriceItem[]>([]);
@@ -100,6 +117,14 @@ const canNavigate = computed(() => {
   const lng = Number(store.value?.longitude);
   return !!lat && !!lng && !Number.isNaN(lat) && !Number.isNaN(lng);
 });
+
+const photos = computed(() =>
+  (store.value?.photos || []).filter((p) => typeof p === "string" && p.length > 0)
+);
+
+function previewPhoto(index: number) {
+  uni.previewImage({ urls: photos.value, current: index });
+}
 
 function formatDistance(km: number) {
   const n = Number(km);
@@ -164,19 +189,12 @@ function callStore() {
 
 function openNav() {
   if (!canNavigate.value || !store.value) return;
-  const lat = Number(store.value.latitude);
-  const lng = Number(store.value.longitude);
-  // #ifdef H5
-  window.open(`https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=17/${lat}/${lng}`);
-  // #endif
-  // #ifndef H5
-  uni.openLocation({
-    latitude: lat,
-    longitude: lng,
+  openNavigation({
+    latitude: Number(store.value.latitude),
+    longitude: Number(store.value.longitude),
     name: store.value.name,
     address: store.value.address || "",
   });
-  // #endif
 }
 
 function goOrder(type: "PICKUP" | "DROPOFF") {
@@ -218,6 +236,23 @@ onLoad((options) => {
       justify-content: center;
       padding: 48rpx 0;
     }
+  }
+}
+
+.gallery {
+  border-radius: 24rpx;
+  overflow: hidden;
+  margin-bottom: 24rpx;
+  background: #e8ecef;
+
+  &__swiper {
+    height: 360rpx;
+  }
+
+  &__img {
+    width: 100%;
+    height: 100%;
+    display: block;
   }
 }
 
