@@ -220,7 +220,7 @@ async function handleCancel(): Promise<void> {
               :type="i === 0 ? 'primary' : undefined"
             >
               <div class="timeline-title">
-                {{ item.title || orderStatusInfo(item.status).label }}
+                {{ item.title || item.label || orderStatusInfo(item.status).label }}
               </div>
               <div v-if="item.remark" class="timeline-remark">{{ item.remark }}</div>
             </el-timeline-item>
