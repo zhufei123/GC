@@ -1,0 +1,13 @@
+{
+  // Cloud Agent development environment for the GC repository.
+  //
+  // The repository currently has no application code, dependency manifests,
+  // or services, so this environment relies on Cursor's default base image
+  // (Ubuntu 24.04 x86_64), which already ships git, curl, make, gcc/g++,
+  // Node.js, Python 3, Go, Rust, and a JDK.
+  //
+  // When application code is added, wire up dependency installation here via
+  // an idempotent "install" command, and add long-running dev servers under
+  // "terminals" (or per-boot service startup under "start").
+  "name": "GC"
+}
