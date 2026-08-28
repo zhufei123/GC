@@ -58,10 +58,16 @@ const activeIndex = ref(0);
 const skus = ref<SkuItem[]>([]);
 const loading = ref(false);
 let loaded = false;
+let loadPromise: Promise<void> | null = null;
 
-async function refresh(force = false) {
-  if (loaded && !force) return;
+function refresh(force = false) {
+  if (loaded && !force) return loadPromise;
   loaded = true;
+  loadPromise = doLoad();
+  return loadPromise;
+}
+
+async function doLoad() {
   loading.value = true;
   try {
     categories.value = (await getCategoryTree()) || [];
@@ -73,6 +79,19 @@ async function refresh(force = false) {
   } finally {
     loading.value = false;
   }
+}
+
+/** 首页分类宫格跳转：定位到该分类(含子分类命中)并加载 SKU */
+async function selectCategory(categoryId: string | number) {
+  await (loadPromise || refresh());
+  const id = String(categoryId);
+  const index = categories.value.findIndex(
+    (c) =>
+      String(c.id) === id || (c.children || []).some((child) => String(child.id) === id)
+  );
+  if (index < 0) return;
+  activeIndex.value = index;
+  await loadSkus(categories.value[index]);
 }
 
 async function loadSkus(cat: CategoryNode) {
@@ -98,7 +117,7 @@ function goQuotes(sku: SkuItem) {
 }
 
 refresh();
-defineExpose({ refresh });
+defineExpose({ refresh, selectCategory });
 </script>
 
 <style lang="scss" scoped>

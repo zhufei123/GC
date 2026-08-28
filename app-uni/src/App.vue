@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { onLaunch } from "@dcloudio/uni-app";
 import { useUserStore } from "@/store/user";
+import { useLocationStore } from "@/store/location";
 import { setupInterceptors } from "@/utils/interceptor";
 
 onLaunch(() => {
   useUserStore().restore();
+  useLocationStore().restore();
   setupInterceptors();
 });
 </script>

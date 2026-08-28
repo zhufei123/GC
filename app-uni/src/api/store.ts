@@ -1,5 +1,6 @@
 import { get } from "@/utils/request";
 import { getAddressList } from "@/api/address";
+import { useLocationStore } from "@/store/location";
 
 /** 深圳南山演示坐标(经度, 纬度) */
 export const FALLBACK_LOCATION = { longitude: 113.953, latitude: 22.537 };
@@ -68,6 +69,17 @@ export interface SkuQuoteItem {
   guide?: boolean;
   /** 报价最后更新时间 yyyy-MM-dd HH:mm:ss */
   priceUpdatedAt?: string;
+}
+
+/** 城市选择器条目(/store/cities)，坐标为该城市 id 最小门店 */
+export interface StoreCityItem {
+  city: string;
+  longitude?: number;
+  latitude?: number;
+}
+
+export function getStoreCities() {
+  return get<StoreCityItem[]>("/app-api/store/cities", undefined, { silent: true });
 }
 
 export function getNearbyStores(longitude: number, latitude: number, extra?: { radiusKm?: number; sort?: string }) {
@@ -159,10 +171,14 @@ function getDeviceLocation(
 }
 
 /**
- * 解析用户坐标：默认地址 -> 设备定位(中国境内才采用) -> 南山演示坐标。
+ * 解析用户坐标：已选城市 -> 默认地址 -> 设备定位(中国境内才采用) -> 南山演示坐标。
  * 上门回收按收货地址算距离更准；云端/海外浏览器 GPS 会把附近站滤空。
  */
 export async function resolveUserLocation(): Promise<{ longitude: number; latitude: number }> {
+  const picked = useLocationStore().coords;
+  if (picked) {
+    return { ...picked };
+  }
   try {
     const list = (await getAddressList()) || [];
     const preferred =

@@ -25,8 +25,12 @@ const mineRef = ref();
 
 const refs = [homeRef, priceRef, orderRef, mineRef];
 
-function switchTab(index: number) {
+function switchTab(index: number, categoryId?: string) {
   active.value = index;
+  if (index === 1 && categoryId) {
+    priceRef.value?.selectCategory?.(categoryId);
+    return;
+  }
   refs[index].value?.refresh?.();
 }
 

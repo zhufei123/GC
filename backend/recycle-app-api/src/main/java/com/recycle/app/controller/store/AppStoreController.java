@@ -1,6 +1,7 @@
 package com.recycle.app.controller.store;
 
 import com.recycle.app.service.AppStoreService;
+import com.recycle.app.vo.StoreCityVO;
 import com.recycle.app.vo.StoreDetailVO;
 import com.recycle.app.vo.StoreNearbyVO;
 import com.recycle.app.vo.StorePriceVO;
@@ -32,6 +33,12 @@ public class AppStoreController {
                                          @RequestParam(required = false) BigDecimal radiusKm,
                                          @RequestParam(required = false) String sort) {
         return R.ok(storeService.nearby(longitude, latitude, radiusKm, sort));
+    }
+
+    @Operation(summary = "城市列表（按可见门店分组，含兜底城市）")
+    @GetMapping("/cities")
+    public R<List<StoreCityVO>> cities() {
+        return R.ok(storeService.cities());
     }
 
     @Operation(summary = "门店详情（带经纬度返回距离）")

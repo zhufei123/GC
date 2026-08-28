@@ -2,9 +2,9 @@
   <scroll-view scroll-y class="home" :style="{ height: 'calc(100vh - 100rpx)' }">
     <view class="home__header">
       <view class="home__topbar">
-        <view class="home__city">
+        <view class="home__city" @tap="openCityPicker">
           <wd-icon name="location" size="32rpx" color="#ffffff" />
-          <text>深圳市</text>
+          <text>{{ cityLabel }}</text>
           <wd-icon name="caret-down-small" size="28rpx" color="#ffffff" />
         </view>
         <view class="home__brand">绿色回收</view>
@@ -50,7 +50,7 @@
             v-for="(cat, i) in categories"
             :key="cat.id"
             class="cat-grid__item"
-            @tap="$emit('switch-tab', 1)"
+            @tap="$emit('switch-tab', 1, cat.id)"
           >
             <view class="cat-grid__icon" :style="{ background: CAT_COLORS[i % CAT_COLORS.length].bg }">
               <wd-icon
@@ -115,6 +115,30 @@
 
       <view class="home__footer">— 绿色回收，让地球更轻盈 —</view>
     </view>
+
+    <!-- 城市选择 -->
+    <wd-action-sheet v-model="cityPickerVisible" title="选择城市">
+      <view class="city-picker">
+        <view
+          v-for="c in cities"
+          :key="c.city"
+          class="city-picker__item"
+          :class="{ 'city-picker__item--active': c.city === cityLabel }"
+          @tap="pickCity(c)"
+        >
+          <text>{{ c.city }}</text>
+          <wd-icon
+            v-if="c.city === cityLabel"
+            name="check"
+            size="32rpx"
+            color="#07c160"
+          />
+        </view>
+        <view v-if="!cities.length" class="city-picker__empty">
+          {{ cityLoading ? "城市加载中…" : "暂无可选城市" }}
+        </view>
+      </view>
+    </wd-action-sheet>
   </scroll-view>
 </template>
 
@@ -122,8 +146,10 @@
 import { ref, computed } from "vue";
 import { getHome } from "@/api/home";
 import { getCategoryTree } from "@/api/goods";
+import { getStoreCities, type StoreCityItem } from "@/api/store";
+import { useLocationStore } from "@/store/location";
 
-defineEmits<{ (e: "switch-tab", index: number): void }>();
+defineEmits<{ (e: "switch-tab", index: number, categoryId?: string): void }>();
 
 const CAT_COLORS = [
   { icon: "read", color: "#07c160", bg: "#e8f9ef" },
@@ -142,6 +168,33 @@ const notices = ref<Array<{ title: string }>>([]);
 let loaded = false;
 
 const noticeText = computed(() => notices.value.map((n) => n.title).join("    "));
+
+/* ---------- 城市选择 ---------- */
+
+const locationStore = useLocationStore();
+const cityPickerVisible = ref(false);
+const cityLoading = ref(false);
+const cities = ref<StoreCityItem[]>([]);
+
+const cityLabel = computed(() => locationStore.city || "深圳市");
+
+async function openCityPicker() {
+  cityPickerVisible.value = true;
+  if (cities.value.length || cityLoading.value) return;
+  cityLoading.value = true;
+  try {
+    cities.value = (await getStoreCities()) || [];
+  } catch (e) {
+    /* 空态展示 */
+  } finally {
+    cityLoading.value = false;
+  }
+}
+
+function pickCity(c: StoreCityItem) {
+  locationStore.setCity(c.city, Number(c.longitude) || 0, Number(c.latitude) || 0);
+  cityPickerVisible.value = false;
+}
 
 async function refresh(force = false) {
   if (loaded && !force) return;
@@ -399,6 +452,34 @@ defineExpose({ refresh });
     font-size: 26rpx;
     font-weight: 600;
     flex-shrink: 0;
+  }
+}
+
+.city-picker {
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 0 32rpx 40rpx;
+  background: #fff;
+
+  &__item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 28rpx 8rpx;
+    border-bottom: 1rpx solid #f2f3f5;
+    font-size: 28rpx;
+
+    &--active {
+      color: $theme-color;
+      font-weight: 600;
+    }
+  }
+
+  &__empty {
+    text-align: center;
+    color: #c0c4cc;
+    padding: 48rpx 0;
+    font-size: 26rpx;
   }
 }
 

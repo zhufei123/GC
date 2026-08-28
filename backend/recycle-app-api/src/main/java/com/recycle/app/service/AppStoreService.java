@@ -2,6 +2,7 @@ package com.recycle.app.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.recycle.app.vo.SkuQuoteVO;
+import com.recycle.app.vo.StoreCityVO;
 import com.recycle.app.vo.StoreDetailVO;
 import com.recycle.app.vo.StoreNearbyVO;
 import com.recycle.app.vo.StorePriceVO;
@@ -25,10 +26,13 @@ import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -98,6 +102,62 @@ public class AppStoreService {
                 .filter(vo -> vo.getDistanceKm() == null || vo.getDistanceKm().compareTo(radius) <= 0)
                 .sorted(nearbyComparator(sort))
                 .toList();
+    }
+
+    /**
+     * 城市列表：按可见门店的城市分组，坐标取该城市 id 最小的门店；
+     * 真实门店城市在前，末尾追加未覆盖的兜底城市，保证选择器不为空。
+     */
+    public List<StoreCityVO> cities() {
+        Map<String, RecycleStation> firstByCity = new LinkedHashMap<>();
+        for (RecycleStation s : visibleStations()) {
+            if (!StringUtils.hasText(s.getCity())) {
+                continue;
+            }
+            String city = s.getCity().trim();
+            RecycleStation kept = firstByCity.get(city);
+            if (kept == null || s.getId() < kept.getId()) {
+                firstByCity.put(city, s);
+            }
+        }
+        List<StoreCityVO> result = new ArrayList<>();
+        firstByCity.forEach((city, s) -> {
+            StoreCityVO vo = new StoreCityVO();
+            vo.setCity(city);
+            vo.setLongitude(s.getLongitude());
+            vo.setLatitude(s.getLatitude());
+            result.add(vo);
+        });
+        Set<String> present = result.stream()
+                .map(v -> normalizeCity(v.getCity()))
+                .collect(Collectors.toSet());
+        for (StoreCityVO fallback : fallbackCities()) {
+            if (!present.contains(normalizeCity(fallback.getCity()))) {
+                result.add(fallback);
+            }
+        }
+        return result;
+    }
+
+    /** 去掉「市」后缀比较，避免「深圳」与「深圳市」重复 */
+    private static String normalizeCity(String city) {
+        String c = city.trim();
+        return c.endsWith("市") ? c.substring(0, c.length() - 1) : c;
+    }
+
+    private static List<StoreCityVO> fallbackCities() {
+        return List.of(
+                fallbackCity("深圳市", "113.95", "22.53"),
+                fallbackCity("广州市", "113.27", "23.13"),
+                fallbackCity("北京市", "116.40", "39.90"));
+    }
+
+    private static StoreCityVO fallbackCity(String city, String longitude, String latitude) {
+        StoreCityVO vo = new StoreCityVO();
+        vo.setCity(city);
+        vo.setLongitude(new BigDecimal(longitude));
+        vo.setLatitude(new BigDecimal(latitude));
+        return vo;
     }
 
     public StoreDetailVO detail(Long id, BigDecimal longitude, BigDecimal latitude) {
