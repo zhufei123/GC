@@ -43,7 +43,7 @@ const formRef = ref<FormInstance>()
 const form = reactive({
   title: '',
   content: '',
-  sort: 0,
+  pinned: 0,
   status: 1,
 })
 
@@ -56,7 +56,7 @@ function openDialog(row?: NoticeVO): void {
   editId.value = row?.id ?? ''
   form.title = row?.title ?? ''
   form.content = row?.content ?? ''
-  form.sort = row?.sort ?? row?.pinned ?? 0
+  form.pinned = Number(row?.pinned) === 1 ? 1 : 0
   form.status = row?.status ?? (row?.publishStatus === 'published' ? 1 : 0)
   dialogVisible.value = true
 }
@@ -119,6 +119,12 @@ async function handleDelete(row: NoticeVO): Promise<void> {
         <el-table-column label="内容摘要" min-width="260" show-overflow-tooltip>
           <template #default="{ row }">{{ row.content || '-' }}</template>
         </el-table-column>
+        <el-table-column label="置顶" width="80" align="center">
+          <template #default="{ row }">
+            <el-tag v-if="Number(row.pinned) === 1" type="warning" size="small">置顶</el-tag>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
         <el-table-column label="状态" width="90" align="center">
           <template #default="{ row }">
             <el-tag :type="row.status === 1 || row.publishStatus === 'published' ? 'success' : 'info'" size="small">
@@ -167,8 +173,8 @@ async function handleDelete(row: NoticeVO): Promise<void> {
         <el-form-item label="公告内容" prop="content">
           <el-input v-model="form.content" type="textarea" :rows="6" maxlength="2000" show-word-limit />
         </el-form-item>
-        <el-form-item label="排序">
-          <el-input-number v-model="form.sort" :min="0" :max="9999" />
+        <el-form-item label="置顶">
+          <el-switch v-model="form.pinned" :active-value="1" :inactive-value="0" />
         </el-form-item>
         <el-form-item label="状态">
           <el-radio-group v-model="form.status">

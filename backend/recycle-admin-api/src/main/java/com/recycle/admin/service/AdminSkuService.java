@@ -26,6 +26,7 @@ import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -70,7 +71,8 @@ public class AdminSkuService {
         copy(dto, sku);
         skuMapper.insert(sku);
         if (dto.getPrice() != null) {
-            insertPriceWithLog(sku.getId(), null, dto.getPrice(), LocalDateTime.now(), "初始定价", null);
+            insertPriceWithLog(sku.getId(), null, dto.getPrice(),
+                    LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS), "初始定价", null);
         }
         return sku.getId();
     }
@@ -98,7 +100,13 @@ public class AdminSkuService {
     public void changePrice(Long id, SkuPriceDTO dto, Long operatorId) {
         require(id);
         BigDecimal oldPrice = priceReader.currentPrice(id);
-        LocalDateTime effectiveAt = dto.getEffectiveAt() == null ? LocalDateTime.now() : dto.getEffectiveAt();
+        LocalDateTime now = LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS);
+        LocalDateTime effectiveAt = dto.getEffectiveAt() == null
+                ? now
+                : dto.getEffectiveAt().truncatedTo(ChronoUnit.SECONDS);
+        if (effectiveAt.isBefore(now)) {
+            throw new BizException(ErrorCode.PARAM_ERROR, "生效时间不能早于当前时间");
+        }
         insertPriceWithLog(id, oldPrice, dto.getPrice(), effectiveAt, dto.getReason(), operatorId);
     }
 

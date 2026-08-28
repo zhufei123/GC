@@ -44,6 +44,12 @@ public class SysRoleService {
 
     public void update(Long id, RoleSaveDTO dto) {
         SysRole role = require(id);
+        Long exists = roleMapper.selectCount(new LambdaQueryWrapper<SysRole>()
+                .eq(SysRole::getCode, dto.getCode())
+                .ne(SysRole::getId, id));
+        if (exists != null && exists > 0) {
+            throw new BizException(ErrorCode.PARAM_ERROR, "角色编码已存在");
+        }
         role.setCode(dto.getCode());
         role.setName(dto.getName());
         role.setRemark(dto.getRemark());

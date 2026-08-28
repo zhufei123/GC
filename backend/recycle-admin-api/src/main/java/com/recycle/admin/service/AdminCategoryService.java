@@ -58,6 +58,7 @@ public class AdminCategoryService {
     }
 
     public Long create(CategorySaveDTO dto) {
+        assertUniqueName(dto.getParentId(), dto.getName(), null);
         Category category = new Category();
         copy(dto, category);
         categoryMapper.insert(category);
@@ -66,6 +67,7 @@ public class AdminCategoryService {
 
     public void update(Long id, CategorySaveDTO dto) {
         Category category = require(id);
+        assertUniqueName(dto.getParentId(), dto.getName(), id);
         copy(dto, category);
         categoryMapper.updateById(category);
     }
@@ -87,6 +89,17 @@ public class AdminCategoryService {
         Category category = require(id);
         category.setStatus(status);
         categoryMapper.updateById(category);
+    }
+
+    private void assertUniqueName(Long parentId, String name, Long excludeId) {
+        Long pid = parentId == null ? 0L : parentId;
+        Long count = categoryMapper.selectCount(new LambdaQueryWrapper<Category>()
+                .eq(Category::getParentId, pid)
+                .eq(Category::getName, name)
+                .ne(excludeId != null, Category::getId, excludeId));
+        if (count != null && count > 0) {
+            throw new BizException(ErrorCode.PARAM_ERROR, "同级分类名称已存在");
+        }
     }
 
     private Category require(Long id) {

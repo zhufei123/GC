@@ -8,6 +8,7 @@ import com.recycle.common.core.ErrorCode;
 import com.recycle.common.core.R;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.BindException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
@@ -61,6 +62,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(NoResourceFoundException.class)
     public R<Void> handleNotFound(NoResourceFoundException e) {
         return R.fail(ErrorCode.NOT_FOUND);
+    }
+
+    @ExceptionHandler(DuplicateKeyException.class)
+    public R<Void> handleDuplicate(DuplicateKeyException e) {
+        return R.fail(ErrorCode.PARAM_ERROR.getCode(), "数据已存在");
     }
 
     @ExceptionHandler(Exception.class)

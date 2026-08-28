@@ -67,7 +67,7 @@ export interface NoticeVO {
 export interface NoticeForm {
   title: string
   content: string
-  sort: number
+  pinned: number
   status: number
   publishStatus?: string
 }
