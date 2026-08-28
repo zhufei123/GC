@@ -56,7 +56,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, watch } from "vue";
 import { getCategoryTree, getSkusUnderCategory } from "@/api/goods";
 import type { CategoryNode, SkuItem } from "@/api/goods";
 
@@ -78,17 +78,17 @@ async function doLoad() {
   loading.value = true;
   try {
     categories.value = (await getCategoryTree()) || [];
-    if (categories.value.length) {
-      await loadSkus(categories.value[0]);
+    const target = categories.value[activeIndex.value] || categories.value[0];
+    if (target) {
+      await loadSkus(target);
     }
   } catch (e) {
     /* 空态展示 */
   } finally {
-    loading.value = false;
-    // 分类为空(接口失败/无数据)时允许下次重试
     if (!categories.value.length) {
       loaded = false;
       loadPromise = null;
+      loading.value = false;
     }
   }
 }
@@ -124,10 +124,17 @@ async function loadSkus(cat: CategoryNode) {
   }
 }
 
-function onCategoryChange({ value }: { value: number }) {
+function onCategoryChange(ev: { value?: number } | number) {
+  const value = typeof ev === "number" ? ev : Number(ev?.value);
+  if (Number.isNaN(value)) return;
   const cat = categories.value[value];
   if (cat) loadSkus(cat);
 }
+
+watch(activeIndex, (i) => {
+  const cat = categories.value[i];
+  if (cat) loadSkus(cat);
+});
 
 function goQuotes(sku: SkuItem) {
   uni.navigateTo({

@@ -118,7 +118,7 @@
 
     <!-- 城市选择 -->
     <wd-action-sheet v-model="cityPickerVisible" title="选择城市">
-      <view class="city-picker">
+      <view v-if="cityPickerVisible" class="city-picker" :key="locationStore.city || 'gps'">
         <view class="city-picker__item city-picker__item--locate" @tap="useCurrentLocation">
           <view class="city-picker__locate">
             <wd-icon name="aim" size="32rpx" color="#07c160" />
@@ -130,12 +130,12 @@
           v-for="c in cities"
           :key="c.city"
           class="city-picker__item"
-          :class="{ 'city-picker__item--active': normCity(c.city) === normCity(cityLabel) }"
+          :class="{ 'city-picker__item--active': isCityActive(c.city) }"
           @tap="pickCity(c)"
         >
           <text>{{ c.city }}</text>
           <wd-icon
-            v-if="normCity(c.city) === normCity(cityLabel)"
+            v-if="isCityActive(c.city)"
             name="check"
             size="32rpx"
             color="#07c160"
@@ -188,6 +188,12 @@ const cityLabel = computed(() => locationStore.city || "深圳市");
 /** 归一化城市名，兼容「深圳」与「深圳市」比较 */
 function normCity(s?: string) {
   return (s || "").replace(/市$/, "");
+}
+
+function isCityActive(city: string) {
+  const stored = locationStore.city;
+  if (stored) return normCity(stored) === normCity(city);
+  return normCity(city) === "深圳";
 }
 
 async function openCityPicker() {
