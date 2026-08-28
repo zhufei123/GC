@@ -26,6 +26,9 @@ export interface OrderVO {
   address?: string;
   receiver?: string;
   phone?: string;
+  /** 上门地址坐标(后端返回时用于导航) */
+  longitude?: number | string;
+  latitude?: number | string;
   appointDate?: string;
   appointPeriod?: string;
   estimateAmount?: string;

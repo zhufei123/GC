@@ -28,7 +28,25 @@
         </view>
         <view class="store-row">
           <text class="store-row__label">营业时间</text>
-          <text class="store-row__value">{{ store.businessHours || "09:00-18:00" }}</text>
+          <view v-if="!hoursEditing" class="store-row__editable" @tap="startEditHours">
+            <text class="store-row__value">{{ store.businessHours || "09:00-18:00" }}</text>
+            <wd-icon name="edit-outline" size="30rpx" color="#86909c" />
+          </view>
+          <view v-else class="hours-edit">
+            <input
+              class="hours-edit__input"
+              :value="hoursInput"
+              placeholder="如 09:00-18:00"
+              :maxlength="20"
+              @input="(e: any) => (hoursInput = e.detail.value)"
+            />
+            <wd-button size="small" type="primary" :loading="hoursSaving" @click="saveHours">
+              保存
+            </wd-button>
+            <wd-button size="small" plain :disabled="hoursSaving" @click="hoursEditing = false">
+              取消
+            </wd-button>
+          </view>
         </view>
         <view class="store-row">
           <text class="store-row__label">门店地址</text>
@@ -62,13 +80,16 @@
 
 <script setup lang="ts">
 import { ref, reactive } from "vue";
-import { getBossStore, updateBusinessStatus } from "@/api/boss";
+import { getBossStore, updateBusinessStatus, updateBusinessHours } from "@/api/boss";
 import { logout as apiLogout } from "@/api/auth";
 import { useUserStore } from "@/store/user";
 
 const userStore = useUserStore();
 const store = reactive<Record<string, any>>({});
 const businessOn = ref(true);
+const hoursEditing = ref(false);
+const hoursInput = ref("");
+const hoursSaving = ref(false);
 
 async function refresh() {
   try {
@@ -79,6 +100,35 @@ async function refresh() {
     }
   } catch (e) {
     /* 保持现有数据 */
+  }
+}
+
+function startEditHours() {
+  hoursInput.value = store.businessHours || "09:00-18:00";
+  hoursEditing.value = true;
+}
+
+async function saveHours() {
+  const value = hoursInput.value.trim();
+  if (!value) {
+    uni.showToast({ title: "请填写营业时间", icon: "none" });
+    return;
+  }
+  // 宽校验：HH:mm-HH:mm，与 C 端 openNow 解析规则一致
+  if (!/^([01]\d|2[0-3]):[0-5]\d\s*-\s*([01]\d|2[0-3]):[0-5]\d$/.test(value)) {
+    uni.showToast({ title: "格式应为 09:00-18:00", icon: "none" });
+    return;
+  }
+  hoursSaving.value = true;
+  try {
+    await updateBusinessHours(value);
+    store.businessHours = value;
+    hoursEditing.value = false;
+    uni.showToast({ title: "营业时间已更新", icon: "success" });
+  } catch (e) {
+    /* 错误提示已由 request 统一处理 */
+  } finally {
+    hoursSaving.value = false;
   }
 }
 
@@ -238,6 +288,31 @@ defineExpose({ refresh });
     color: #1f2329;
     text-align: right;
     margin-left: 32rpx;
+  }
+
+  &__editable {
+    display: flex;
+    align-items: center;
+    gap: 12rpx;
+  }
+}
+
+.hours-edit {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16rpx;
+  margin-left: 32rpx;
+
+  &__input {
+    flex: 1;
+    max-width: 260rpx;
+    font-size: 26rpx;
+    background: #f7f8fa;
+    border-radius: 12rpx;
+    padding: 12rpx 16rpx;
+    text-align: center;
   }
 }
 </style>

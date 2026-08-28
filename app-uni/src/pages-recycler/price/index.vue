@@ -7,6 +7,13 @@
 
     <view v-if="loading" class="bprice__loading"><wd-loading color="#07c160" /></view>
     <template v-else>
+      <!-- 批量调价工具栏(修改后仍需点击保存生效) -->
+      <view v-if="items.length" class="bulk-bar">
+        <view class="bulk-bar__btn" @tap="syncGuidePrices">同步指导价</view>
+        <view class="bulk-bar__btn" @tap="adjustAll(5)">全部上调5%</view>
+        <view class="bulk-bar__btn" @tap="adjustAll(-5)">全部下调5%</view>
+      </view>
+
       <view v-for="item in items" :key="item.skuId" class="price-card">
         <view class="price-card__main">
           <view class="price-card__info">
@@ -138,6 +145,39 @@ async function loadFromSkus() {
   }
 }
 
+/** 指导价复制为本站价(所有有指导价的行)，仍需点击保存生效 */
+function syncGuidePrices() {
+  let count = 0;
+  for (const it of items.value) {
+    if (it.guidePrice && parseFloat(it.guidePrice) > 0) {
+      it.price = String(it.guidePrice);
+      count += 1;
+    }
+  }
+  uni.showToast({
+    title: count ? `已同步 ${count} 项，请点击保存` : "暂无可同步的指导价",
+    icon: "none",
+  });
+}
+
+/** 全部报价按百分比上调/下调(保留2位小数)，仍需点击保存生效 */
+function adjustAll(percent: number) {
+  let count = 0;
+  for (const it of items.value) {
+    const n = parseFloat(it.price || "");
+    if (!Number.isNaN(n) && n > 0) {
+      it.price = (Math.round(n * (1 + percent / 100) * 100) / 100).toFixed(2);
+      count += 1;
+    }
+  }
+  uni.showToast({
+    title: count
+      ? `已${percent > 0 ? "上调" : "下调"} ${count} 项，请点击保存`
+      : "暂无可调整的报价",
+    icon: "none",
+  });
+}
+
 async function onSave() {
   const invalid = items.value.find((it) => it.active && !(parseFloat(it.price || "0") > 0));
   if (invalid) {
@@ -189,6 +229,24 @@ load();
     display: flex;
     justify-content: center;
     padding: 120rpx 0;
+  }
+}
+
+.bulk-bar {
+  display: flex;
+  gap: 16rpx;
+  margin-bottom: 24rpx;
+
+  &__btn {
+    flex: 1;
+    text-align: center;
+    background: #fff;
+    border: 2rpx solid $theme-color;
+    color: $theme-color;
+    font-size: 25rpx;
+    font-weight: 600;
+    border-radius: 40rpx;
+    padding: 14rpx 0;
   }
 }
 

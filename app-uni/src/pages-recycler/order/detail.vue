@@ -25,6 +25,19 @@
           <wd-icon name="chat" size="30rpx" color="#86909c" />
           <text>{{ order.remark }}</text>
         </view>
+        <!-- 导航按钮见上方地址行(map-nav)；此处提供快捷拨号 -->
+        <view v-if="order.phone" class="contact-bar">
+          <wd-button
+            size="small"
+            type="primary"
+            plain
+            custom-class="contact-bar__btn"
+            @click="callCustomer"
+          >
+            <wd-icon name="phone" size="26rpx" />
+            拨打电话
+          </wd-button>
+        </view>
       </view>
 
       <view class="card">
@@ -110,6 +123,12 @@ function onNavigate() {
     name: order.value.receiver ? `${order.value.receiver}的取件地址` : "取件地址",
     address: order.value.address || "",
   });
+}
+
+function callCustomer() {
+  const phone = order.value?.phone;
+  if (!phone) return;
+  uni.makePhoneCall({ phoneNumber: String(phone) });
 }
 
 /** 已称重取实收明细，否则展示预估明细并标注 */
@@ -235,6 +254,18 @@ onShow(() => {
   &__grow {
     flex: 1;
     min-width: 0;
+  }
+}
+
+.contact-bar {
+  display: flex;
+  gap: 20rpx;
+  margin-top: 20rpx;
+  padding-top: 20rpx;
+  border-top: 1rpx solid #f2f3f5;
+
+  :deep(.contact-bar__btn) {
+    flex: 1;
   }
 }
 

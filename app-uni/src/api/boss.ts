@@ -27,6 +27,10 @@ export function updateBusinessStatus(businessStatus: number) {
   return put("/app-api/boss/store", { businessStatus });
 }
 
+export function updateBusinessHours(businessHours: string) {
+  return put("/app-api/boss/store", { businessHours }, { loading: true });
+}
+
 export function getOrderPool(params?: { pageNum?: number; pageSize?: number }) {
   return get<PageResult<OrderVO>>("/app-api/boss/order/pool", params, { silent: true });
 }
@@ -87,6 +91,8 @@ export interface StationPriceItem {
   price?: string;
   /** 1 报价中 / 0 停报 */
   status?: number;
+  /** 本站报价最后更新时间 yyyy-MM-dd HH:mm:ss */
+  updatedAt?: string;
 }
 
 export interface StationPriceSaveItem {
