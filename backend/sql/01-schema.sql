@@ -279,7 +279,7 @@ CREATE TABLE sys_role (
   create_time DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   update_time DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   deleted     TINYINT      NOT NULL DEFAULT 0,
-  UNIQUE KEY uk_role_code (code)
+  UNIQUE KEY uk_role_code (code, deleted)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='角色';
 
 CREATE TABLE sys_menu (
