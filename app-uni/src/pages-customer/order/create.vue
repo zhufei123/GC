@@ -127,6 +127,26 @@
       </view>
     </view>
 
+    <!-- 物品照片(选填) -->
+    <view class="card">
+      <view class="card__title">
+        物品照片
+        <text class="card__title-optional">选填 {{ photos.length }}/{{ MAX_PHOTOS }}</text>
+      </view>
+      <view class="photo-grid">
+        <view v-for="(img, i) in photos" :key="i" class="photo-grid__item">
+          <image :src="img" mode="aspectFill" class="photo-grid__img" @tap="previewPhoto(i)" />
+          <view class="photo-grid__del" @tap.stop="removePhoto(i)">
+            <wd-icon name="close" size="22rpx" color="#ffffff" />
+          </view>
+        </view>
+        <view v-if="photos.length < MAX_PHOTOS" class="photo-grid__add" @tap="addPhotos">
+          <wd-icon name="camera" size="48rpx" color="#c0c4cc" />
+          <text>拍照/相册</text>
+        </view>
+      </view>
+    </view>
+
     <!-- 备注 -->
     <view class="card">
       <view class="card__title">备注</view>
@@ -162,8 +182,10 @@ import type { AddressItem } from "@/api/address";
 import { createOrder, getTimeslots } from "@/api/order";
 import { getStorePrices, getCachedStore } from "@/api/store";
 import type { StoreItem } from "@/api/store";
+import { chooseAndUpload } from "@/utils/upload";
 
 const DEFAULT_PERIODS = ["09:00-11:00", "11:00-13:00", "14:00-16:00", "16:00-18:00"];
+const MAX_PHOTOS = 6;
 
 const address = ref<AddressItem | null>(null);
 const store = ref<StoreItem | null>(null);
@@ -178,6 +200,8 @@ const periods = ref<string[]>(DEFAULT_PERIODS);
 const appointDate = ref("");
 const appointPeriod = ref("");
 const remark = ref("");
+/** 物品照片(选填，不阻断下单) */
+const photos = ref<string[]>([]);
 const submitting = ref(false);
 
 const dateOptions = buildDateOptions();
@@ -219,6 +243,21 @@ function chooseAddress() {
 
 function chooseStore() {
   uni.navigateTo({ url: "/pages-customer/store/nearby?select=1" });
+}
+
+async function addPhotos() {
+  const rest = MAX_PHOTOS - photos.value.length;
+  if (rest <= 0) return;
+  const urls = await chooseAndUpload("order", rest);
+  if (urls.length) photos.value = [...photos.value, ...urls].slice(0, MAX_PHOTOS);
+}
+
+function removePhoto(i: number) {
+  photos.value.splice(i, 1);
+}
+
+function previewPhoto(i: number) {
+  uni.previewImage({ urls: photos.value, current: i });
 }
 
 /** 门店价目就绪时覆盖指导价；404/为空则维持 sku/list 指导价 */
@@ -313,7 +352,7 @@ async function submit() {
         skuId: s.id,
         estimateWeight: String(selected[s.id]),
       })),
-      images: [],
+      images: photos.value,
       remark: remark.value,
       requestId: `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
     });
@@ -400,6 +439,57 @@ onUnload(() => {
     display: flex;
     align-items: center;
     gap: 16rpx;
+  }
+
+  &__title-optional {
+    font-size: 24rpx;
+    font-weight: 400;
+    color: #86909c;
+  }
+}
+
+.photo-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+
+  &__item {
+    position: relative;
+    width: 156rpx;
+    height: 156rpx;
+  }
+
+  &__img {
+    width: 100%;
+    height: 100%;
+    border-radius: 12rpx;
+  }
+
+  &__del {
+    position: absolute;
+    right: -10rpx;
+    top: -10rpx;
+    width: 36rpx;
+    height: 36rpx;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  &__add {
+    width: 156rpx;
+    height: 156rpx;
+    border: 2rpx dashed #dcdfe6;
+    border-radius: 12rpx;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8rpx;
+    font-size: 22rpx;
+    color: #c0c4cc;
   }
 }
 

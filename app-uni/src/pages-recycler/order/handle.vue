@@ -61,6 +61,26 @@
         </view>
       </view>
 
+      <view class="card">
+        <view class="card__title">
+          现场照片
+          <text class="card__title-count">{{ photos.length }}/{{ MAX_PHOTOS }}</text>
+        </view>
+        <view class="photo-grid">
+          <view v-for="(img, i) in photos" :key="i" class="photo-grid__item">
+            <image :src="img" mode="aspectFill" class="photo-grid__img" @tap="previewPhoto(i)" />
+            <view class="photo-grid__del" @tap.stop="removePhoto(i)">
+              <wd-icon name="close" size="22rpx" color="#ffffff" />
+            </view>
+          </view>
+          <view v-if="photos.length < MAX_PHOTOS" class="photo-grid__add" @tap="addPhotos">
+            <wd-icon name="camera" size="48rpx" color="#c0c4cc" />
+            <text>拍照/相册</text>
+          </view>
+        </view>
+        <view class="card__tip">请拍摄称重现场，至少 1 张</view>
+      </view>
+
       <view v-if="order?.remark" class="card">
         <view class="card__title">客户备注</view>
         <view class="card__text">{{ order.remark }}</view>
@@ -120,6 +140,7 @@ import { ref, computed } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import { getBossOrderDetail, getAvailableSkus, submitWeigh, completeOrder } from "@/api/boss";
 import { orderLineItems, type OrderVO } from "@/api/order";
+import { chooseAndUpload } from "@/utils/upload";
 
 interface WeighRow {
   skuId: string;
@@ -129,9 +150,12 @@ interface WeighRow {
   weight: string;
 }
 
+const MAX_PHOTOS = 6;
+
 const order = ref<OrderVO | null>(null);
 const step = ref<"weigh" | "complete">("weigh");
 const rows = ref<WeighRow[]>([]);
+const photos = ref<string[]>([]);
 const submitting = ref(false);
 const lockedAmount = ref("0.00");
 const skuPickerVisible = ref(false);
@@ -192,6 +216,21 @@ function removeRow(i: number) {
   rows.value.splice(i, 1);
 }
 
+async function addPhotos() {
+  const rest = MAX_PHOTOS - photos.value.length;
+  if (rest <= 0) return;
+  const urls = await chooseAndUpload("weigh", rest);
+  if (urls.length) photos.value = [...photos.value, ...urls].slice(0, MAX_PHOTOS);
+}
+
+function removePhoto(i: number) {
+  photos.value.splice(i, 1);
+}
+
+function previewPhoto(i: number) {
+  uni.previewImage({ urls: photos.value, current: i });
+}
+
 async function doWeigh() {
   const items = rows.value
     .filter((r) => parseFloat(r.weight || "0") > 0)
@@ -200,9 +239,13 @@ async function doWeigh() {
     uni.showToast({ title: "请录入至少一项重量", icon: "none" });
     return;
   }
+  if (!photos.value.length) {
+    uni.showToast({ title: "请至少上传 1 张现场照片", icon: "none" });
+    return;
+  }
   submitting.value = true;
   try {
-    const res: any = await submitWeigh(orderId, { items, images: [] });
+    const res: any = await submitWeigh(orderId, { items, images: photos.value });
     lockedAmount.value = res?.actualAmount || res?.totalAmount || weighTotal.value;
     // 以服务端锁定金额为准
     try {
@@ -302,10 +345,68 @@ onLoad((options) => {
     margin-bottom: 20rpx;
   }
 
+  &__title-count {
+    margin-left: 12rpx;
+    font-size: 24rpx;
+    font-weight: 400;
+    color: #86909c;
+  }
+
   &__text {
     font-size: 26rpx;
     color: #4e5969;
     line-height: 1.6;
+  }
+
+  &__tip {
+    margin-top: 16rpx;
+    font-size: 22rpx;
+    color: #c0c4cc;
+  }
+}
+
+.photo-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+
+  &__item {
+    position: relative;
+    width: 156rpx;
+    height: 156rpx;
+  }
+
+  &__img {
+    width: 100%;
+    height: 100%;
+    border-radius: 12rpx;
+  }
+
+  &__del {
+    position: absolute;
+    right: -10rpx;
+    top: -10rpx;
+    width: 36rpx;
+    height: 36rpx;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  &__add {
+    width: 156rpx;
+    height: 156rpx;
+    border: 2rpx dashed #dcdfe6;
+    border-radius: 12rpx;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8rpx;
+    font-size: 22rpx;
+    color: #c0c4cc;
   }
 }
 

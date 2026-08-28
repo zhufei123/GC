@@ -14,7 +14,8 @@
         </view>
         <view class="info-row">
           <wd-icon name="location" size="30rpx" color="#86909c" />
-          <text>{{ order.address || "-" }}</text>
+          <text class="info-row__grow">{{ order.address || "-" }}</text>
+          <wd-button v-if="canNavigate" size="small" plain @click.stop="onNavigate">导航</wd-button>
         </view>
         <view class="info-row">
           <wd-icon name="clock" size="30rpx" color="#86909c" />
@@ -43,6 +44,20 @@
         <view class="amount-row amount-row--main">
           <text>实收金额</text>
           <text class="amount-row__money">¥{{ order.actualAmount || "0.00" }}</text>
+        </view>
+      </view>
+
+      <view v-if="photos.length" class="card">
+        <view class="card__title">现场照片</view>
+        <view class="photo-wall">
+          <image
+            v-for="(img, i) in photos"
+            :key="i"
+            :src="img"
+            mode="aspectFill"
+            class="photo-wall__img"
+            @tap="previewPhoto(i)"
+          />
         </view>
       </view>
 
@@ -75,10 +90,27 @@ import { onLoad, onShow } from "@dcloudio/uni-app";
 import { getBossOrderDetail, startService } from "@/api/boss";
 import { orderLineItems, type OrderVO } from "@/api/order";
 import { statusText, statusType } from "@/utils/order-status";
+import { openNavigation } from "@/utils/map-nav";
 
 const order = ref<OrderVO | null>(null);
 let orderId = "";
 let loadedOnce = false;
+
+const canNavigate = computed(() => {
+  const lat = Number(order.value?.latitude);
+  const lng = Number(order.value?.longitude);
+  return !!lat && !!lng && !Number.isNaN(lat) && !Number.isNaN(lng);
+});
+
+function onNavigate() {
+  if (!canNavigate.value || !order.value) return;
+  openNavigation({
+    latitude: Number(order.value.latitude),
+    longitude: Number(order.value.longitude),
+    name: order.value.receiver ? `${order.value.receiver}的取件地址` : "取件地址",
+    address: order.value.address || "",
+  });
+}
 
 /** 已称重取实收明细，否则展示预估明细并标注 */
 const lineItems = computed(() => {
@@ -95,6 +127,16 @@ const lineItems = computed(() => {
     };
   });
 });
+
+/** 用户下单照片 + 称重现场照片 */
+const photos = computed<string[]>(() => [
+  ...(order.value?.images || []),
+  ...(order.value?.weighImages || []),
+]);
+
+function previewPhoto(i: number) {
+  uni.previewImage({ urls: photos.value, current: i });
+}
 
 async function load() {
   try {
@@ -189,6 +231,23 @@ onShow(() => {
   padding: 10rpx 0;
   font-size: 27rpx;
   color: #4e5969;
+
+  &__grow {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.photo-wall {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+
+  &__img {
+    width: 156rpx;
+    height: 156rpx;
+    border-radius: 12rpx;
+  }
 }
 
 .item-row {

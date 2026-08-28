@@ -55,6 +55,20 @@
         </view>
       </view>
 
+      <view v-if="photos.length" class="card">
+        <view class="card__title">现场照片</view>
+        <view class="photo-wall">
+          <image
+            v-for="(img, i) in photos"
+            :key="i"
+            :src="img"
+            mode="aspectFill"
+            class="photo-wall__img"
+            @tap="previewPhoto(i)"
+          />
+        </view>
+      </view>
+
       <view v-if="order.remark" class="card">
         <view class="card__title">备注</view>
         <view class="card__text">{{ order.remark }}</view>
@@ -117,6 +131,16 @@ const lineItems = computed<DetailRow[]>(() => {
   });
   return rows;
 });
+
+/** 下单照片 + 称重现场照片 */
+const photos = computed<string[]>(() => [
+  ...(order.value?.images || []),
+  ...(order.value?.weighImages || []),
+]);
+
+function previewPhoto(i: number) {
+  uni.previewImage({ urls: photos.value, current: i });
+}
 
 const statusIcon = computed(() => {
   switch (order.value?.status) {
@@ -264,6 +288,18 @@ onLoad((options) => {
   padding: 10rpx 0;
   font-size: 27rpx;
   color: #4e5969;
+}
+
+.photo-wall {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+
+  &__img {
+    width: 156rpx;
+    height: 156rpx;
+    border-radius: 12rpx;
+  }
 }
 
 .item-head,

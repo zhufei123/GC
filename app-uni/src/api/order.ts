@@ -34,6 +34,10 @@ export interface OrderVO {
   estimateItems?: OrderLineItem[];
   actualItems?: OrderLineItem[];
   items?: OrderLineItem[];
+  /** 用户下单照片 */
+  images?: string[];
+  /** 称重现场照片 */
+  weighImages?: string[];
   remark?: string;
   cancelReason?: string;
 }
