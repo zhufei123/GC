@@ -12,8 +12,13 @@
           <view class="head__main">
             <view class="head__name">
               {{ store.name }}
-              <wd-tag v-if="store.businessStatus === 0" plain>休息中</wd-tag>
-              <wd-tag v-else-if="store.businessStatus === 1" type="success" plain>营业中</wd-tag>
+              <wd-tag v-if="store.openNow === true" type="success" plain>营业中</wd-tag>
+              <wd-tag
+                v-else-if="store.openNow === false || store.businessStatus === 0"
+                plain
+              >
+                休息中
+              </wd-tag>
             </view>
             <view v-if="store.distanceKm != null" class="head__dist">
               距您 {{ formatDistance(store.distanceKm) }}
@@ -51,6 +56,9 @@
               <template v-if="p.price != null && p.price !== ''">
                 <text class="price-row__amount">¥{{ p.price }}</text>
                 <text class="price-row__unit">/{{ p.unit || "kg" }}</text>
+                <view v-if="!p.guide && p.guidePrice != null" class="price-row__guide">
+                  指导价 ¥{{ p.guidePrice }}
+                </view>
               </template>
               <wd-tag v-else plain>暂无报价</wd-tag>
             </view>
@@ -77,7 +85,7 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
-import { getStoreDetail, getStorePrices, getCachedStore } from "@/api/store";
+import { getStoreDetail, getStorePrices, getCachedStore, resolveUserLocation } from "@/api/store";
 import type { StoreItem, StorePriceItem } from "@/api/store";
 import { getSkuList } from "@/api/goods";
 
@@ -102,7 +110,9 @@ function formatDistance(km: number) {
 async function loadStore(id: string) {
   loading.value = true;
   try {
-    store.value = await getStoreDetail(id);
+    // 带用户坐标查询，后端返回 distanceKm
+    const { longitude, latitude } = await resolveUserLocation();
+    store.value = await getStoreDetail(id, longitude, latitude);
   } catch (e) {
     // 详情接口未就绪：使用附近列表缓存兜底
     store.value = getCachedStore(id);
@@ -118,9 +128,11 @@ async function loadPrices(id: string) {
   priceLoading.value = true;
   try {
     const list = await getStorePrices(id);
-    if (Array.isArray(list) && list.length) {
-      prices.value = list;
-      priceIsGuide.value = list.every((p) => p.guide === true);
+    // status=0 停报的条目不展示
+    const active = (list || []).filter((p) => p.status !== 0);
+    if (active.length) {
+      prices.value = active;
+      priceIsGuide.value = active.every((p) => p.guide === true);
       return;
     }
     throw new Error("empty store prices");
@@ -308,6 +320,16 @@ onLoad((options) => {
   &__unit {
     color: #86909c;
     font-size: 22rpx;
+  }
+
+  &__right {
+    text-align: right;
+  }
+
+  &__guide {
+    margin-top: 4rpx;
+    font-size: 20rpx;
+    color: #86909c;
   }
 }
 

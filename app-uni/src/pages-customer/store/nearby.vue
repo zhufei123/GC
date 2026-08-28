@@ -16,7 +16,10 @@
       <view class="picked__main">
         <view class="picked__name">
           {{ selectedStore.name }}
-          <wd-tag v-if="selectedStore.businessStatus === 0" plain>休息中</wd-tag>
+          <wd-tag v-if="selectedStore.openNow === true" type="success" plain>营业中</wd-tag>
+          <wd-tag v-else-if="selectedStore.openNow === false || selectedStore.businessStatus === 0" plain>
+            休息中
+          </wd-tag>
         </view>
         <view class="picked__addr">{{ selectedStore.address || "地址待完善" }}</view>
         <view v-if="selectedStore.distanceKm != null" class="picked__dist">
@@ -51,14 +54,20 @@
           <view class="store-card__info">
             <view class="store-card__line1">
               <text class="store-card__name">{{ store.name }}</text>
+              <text v-if="store.highlightPrice != null" class="store-card__highlight">
+                最高 ¥{{ store.highlightPrice }}
+              </text>
               <text v-if="store.distanceKm != null" class="store-card__dist">
                 {{ formatDistance(store.distanceKm) }}
               </text>
             </view>
             <view class="store-card__addr">{{ store.address || "地址待完善" }}</view>
             <view v-if="store.prices?.length" class="store-card__prices">
-              <view v-for="p in store.prices.slice(0, 3)" :key="p.skuId" class="store-card__price-chip">
-                {{ p.skuName || p.name }} ¥{{ p.price }}/{{ p.unit || "kg" }}
+              <view v-for="(p, pi) in store.prices.slice(0, 3)" :key="pi" class="store-card__price-chip">
+                {{ p.skuName }} ¥{{ p.price }}
+              </view>
+              <view v-if="store.quotedCount" class="store-card__price-more">
+                {{ store.quotedCount }} 项报价
               </view>
             </view>
           </view>
@@ -442,12 +451,25 @@ onUnload(() => {
     gap: 12rpx;
   }
 
+  &__highlight {
+    font-size: 22rpx;
+    color: #ff4d4f;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+
   &__price-chip {
     font-size: 22rpx;
     color: #ff4d4f;
     background: #fff1f0;
     border-radius: 8rpx;
     padding: 4rpx 12rpx;
+  }
+
+  &__price-more {
+    font-size: 22rpx;
+    color: #86909c;
+    padding: 4rpx 0;
   }
 
   &__action {

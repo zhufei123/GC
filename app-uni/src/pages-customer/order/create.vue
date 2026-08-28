@@ -229,8 +229,10 @@ async function applyStorePrices() {
   }
   try {
     const list = await getStorePrices(String(store.value.id));
-    if (!Array.isArray(list) || !list.length) throw new Error("empty store prices");
-    const priceMap = new Map(list.map((p) => [String(p.skuId), p]));
+    // status=0 停报的条目不参与覆盖
+    const active = (list || []).filter((p) => p.status !== 0);
+    if (!active.length) throw new Error("empty store prices");
+    const priceMap = new Map(active.map((p) => [String(p.skuId), p]));
     skus.value = skus.value.map((s) => {
       const p = priceMap.get(String(s.id));
       return p ? { ...s, price: p.price != null ? String(p.price) : s.price, unit: p.unit || s.unit } : s;

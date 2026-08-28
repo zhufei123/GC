@@ -38,7 +38,7 @@
           {{ i + 1 }}
         </view>
         <view class="quote-card__info">
-          <view class="quote-card__name">{{ q.storeName || q.name }}</view>
+          <view class="quote-card__name">{{ q.storeName }}</view>
           <view class="quote-card__meta">
             <text v-if="q.distanceKm != null">{{ formatDistance(q.distanceKm) }}</text>
             <text v-if="q.address" class="quote-card__addr">{{ q.address }}</text>
@@ -134,15 +134,18 @@ async function loadFallback(longitude: number, latitude: number) {
     cacheNearbyStores(stores || []);
     const sku = (skus || []).find((s) => String(s.id) === String(skuId.value));
     quotes.value = (stores || []).map((store) => {
-      const storePrice = store.prices?.find((p) => String(p.skuId) === String(skuId.value));
+      // nearby 的 TOP 报价只有 skuName，无 skuId，按名称匹配
+      const brief = sku?.name
+        ? store.prices?.find((p) => p.skuName === sku.name)
+        : undefined;
       return {
-        storeId: store.id,
+        storeId: String(store.id),
         storeName: store.name,
         address: store.address,
         distanceKm: store.distanceKm,
-        price: storePrice?.price ?? sku?.price ?? null,
-        unit: storePrice?.unit || sku?.unit,
-        guide: !storePrice,
+        price: brief?.price ?? sku?.price ?? null,
+        unit: sku?.unit,
+        guide: !brief,
       };
     });
     isGuideFallback.value = quotes.value.length > 0 && quotes.value.every((q) => q.guide);
