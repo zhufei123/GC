@@ -119,7 +119,11 @@
     <!-- 城市选择 -->
     <wd-action-sheet v-model="cityPickerVisible" title="选择城市">
       <view v-if="cityPickerVisible" class="city-picker" :key="locationStore.city || 'gps'">
-        <view class="city-picker__item city-picker__item--locate" @tap="useCurrentLocation">
+        <view
+          class="city-picker__item city-picker__item--locate"
+          :class="{ 'city-picker__item--active': !locationStore.city }"
+          @tap="useCurrentLocation"
+        >
           <view class="city-picker__locate">
             <wd-icon name="aim" size="32rpx" color="#07c160" />
             <text>使用当前位置</text>
@@ -507,8 +511,7 @@ defineExpose({ refresh });
     }
 
     &--locate {
-      color: $theme-color;
-      font-weight: 600;
+      /* 未选城市时与选中项同样高亮；选了城市后仅「使用当前位置」普通色 */
     }
   }
 
