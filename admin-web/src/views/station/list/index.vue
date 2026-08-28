@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
-import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
 import {
   getStorePage,
@@ -68,7 +68,6 @@ async function handleStatusChange(row: StoreVO): Promise<void> {
 const dialogVisible = ref(false)
 const submitting = ref(false)
 const editId = ref('')
-const formRef = ref<FormInstance>()
 
 const form = reactive({
   name: '',
@@ -196,7 +195,7 @@ async function submitForm(): Promise<void> {
     </el-card>
 
     <el-dialog v-model="dialogVisible" title="编辑门店" width="480px" destroy-on-close>
-      <el-form ref="formRef" :model="form" label-width="80px">
+      <el-form :model="form" label-width="80px">
         <el-form-item label="门店名称">
           <el-input v-model.trim="form.name" maxlength="40" />
         </el-form-item>
