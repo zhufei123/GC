@@ -61,6 +61,7 @@ public class AppOrderService {
     private final SkuMapper skuMapper;
     private final StationPriceReader stationPriceReader;
     private final OrderAssembler orderAssembler;
+    private final NotifyService notifyService;
 
     @Transactional
     public Long create(Long userId, OrderCreateDTO dto) {
@@ -184,6 +185,8 @@ public class AppOrderService {
             item.setOrderId(order.getId());
             orderItemMapper.insert(item);
         }
+        notifyService.inAppQuietly(userId, "ORDER_CREATED", "预约成功",
+                "回收订单 " + order.getOrderNo() + " 已提交，等待回收站接单", "ORDER", order.getId());
         return order.getId();
     }
 
@@ -217,6 +220,8 @@ public class AppOrderService {
         if (rows == 0) {
             throw new BizException(ErrorCode.ORDER_STATUS_ILLEGAL);
         }
+        notifyService.inAppQuietly(userId, "ORDER_CANCELLED", "订单已取消",
+                "订单 " + order.getOrderNo() + " 已取消", "ORDER", orderId);
     }
 
     /** 评价：仅 COMPLETED 订单，一单一评（uk_review_order 兜底并发） */

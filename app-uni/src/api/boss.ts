@@ -71,8 +71,10 @@ export function submitWeigh(
   return post(`/app-api/boss/order/${id}/weigh`, data, { loading: true });
 }
 
-export function completeOrder(id: string, confirmAmount: string) {
-  return post(`/app-api/boss/order/${id}/complete`, { confirmAmount }, { loading: true });
+export type PayMethod = "OFFLINE" | "WX_TRANSFER" | "ALIPAY_TRANSFER" | "WALLET";
+
+export function completeOrder(id: string, confirmAmount: string, payMethod: PayMethod = "OFFLINE") {
+  return post(`/app-api/boss/order/${id}/complete`, { confirmAmount, payMethod }, { loading: true });
 }
 
 export function getBossStore() {

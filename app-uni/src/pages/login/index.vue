@@ -9,7 +9,11 @@
     </view>
 
     <view class="login__card">
-      <view class="role-switch">
+      <view v-if="bindMode" class="bind-tip">
+        <wd-icon name="mobile" size="32rpx" color="#07c160" />
+        <text>登录成功，请绑定手机号（已注册号码将自动合并账号）</text>
+      </view>
+      <view v-else class="role-switch">
         <view
           class="role-switch__item"
           :class="{ 'role-switch__item--active': client === 'user' }"
@@ -67,26 +71,21 @@
           :loading="logging"
           @click="handleLogin"
         >
-          登 录
+          {{ bindMode ? "绑定并登录" : "登 录" }}
         </wd-button>
       </view>
 
-      <!-- #ifdef MP-WEIXIN -->
-      <view class="third-party">
+      <view v-if="!bindMode" class="third-party">
         <view class="third-party__divider">其他登录方式</view>
-        <wd-button plain type="success" icon="chat" @click="onThirdPlaceholder">
-          微信一键登录
-        </wd-button>
+        <view class="third-party__btns">
+          <wd-button plain type="success" icon="chat" :loading="thirdLogging" @click="handleWxLogin">
+            微信一键登录
+          </wd-button>
+          <wd-button plain type="primary" icon="wallet" :loading="thirdLogging" @click="handleAlipayLogin">
+            支付宝一键登录
+          </wd-button>
+        </view>
       </view>
-      <!-- #endif -->
-      <!-- #ifdef MP-ALIPAY -->
-      <view class="third-party">
-        <view class="third-party__divider">其他登录方式</view>
-        <wd-button plain type="primary" icon="wallet" @click="onThirdPlaceholder">
-          支付宝一键登录
-        </wd-button>
-      </view>
-      <!-- #endif -->
 
       <view class="login__tips">
         <view class="login__tips-title">
@@ -108,8 +107,14 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
-import { sendSmsCode, phoneLogin } from "@/api/auth";
-import { useUserStore } from "@/store/user";
+import {
+  sendSmsCode,
+  phoneLogin,
+  wxLogin as apiWxLogin,
+  alipayLogin as apiAlipayLogin,
+  bindPhone as apiBindPhone,
+} from "@/api/auth";
+import { useUserStore, type LoginPayload } from "@/store/user";
 
 const userStore = useUserStore();
 
@@ -119,6 +124,9 @@ const smsCode = ref("");
 const counting = ref(0);
 const sending = ref(false);
 const logging = ref(false);
+/** 三方登录成功但未绑手机号：进入补绑模式 */
+const bindMode = ref(false);
+const thirdLogging = ref(false);
 let timer: ReturnType<typeof setInterval> | null = null;
 
 function fillDemo(type: "user" | "boss") {
@@ -161,6 +169,10 @@ async function handleLogin() {
     uni.showToast({ title: "请输入验证码", icon: "none" });
     return;
   }
+  if (bindMode.value) {
+    await handleBindPhone();
+    return;
+  }
   logging.value = true;
   try {
     const data = await phoneLogin({
@@ -177,8 +189,70 @@ async function handleLogin() {
   }
 }
 
-function onThirdPlaceholder() {
-  uni.showToast({ title: "小程序端接入后开放", icon: "none" });
+/** 三方登录后补绑手机号（已注册号码后端自动合并账号并返回新 token） */
+async function handleBindPhone() {
+  logging.value = true;
+  try {
+    const data = await apiBindPhone({ phone: phone.value, smsCode: smsCode.value });
+    userStore.setLogin(data);
+    uni.reLaunch({ url: userStore.homePath });
+  } catch (e) {
+    /* 错误提示已由 request 统一处理 */
+  } finally {
+    logging.value = false;
+  }
+}
+
+/** 取 uni.login code；H5 或失败时返回空串由调用方回退 mock code */
+function uniLoginCode(provider: "weixin" | "alipay"): Promise<string> {
+  return new Promise((resolve) => {
+    try {
+      uni.login({
+        provider,
+        success: (res: any) => resolve(res?.code || ""),
+        fail: () => resolve(""),
+      } as any);
+    } catch (e) {
+      resolve("");
+    }
+  });
+}
+
+function afterThirdLogin(data: LoginPayload) {
+  userStore.setLogin(data);
+  if (!data.hasPhone) {
+    bindMode.value = true;
+    uni.showToast({ title: "请先绑定手机号", icon: "none" });
+    return;
+  }
+  uni.reLaunch({ url: userStore.homePath });
+}
+
+async function handleWxLogin() {
+  if (thirdLogging.value) return;
+  thirdLogging.value = true;
+  try {
+    // H5 无小程序环境：uni.login 失败时回退 mock code（后端未配置 appid 时 code 即 openid）
+    const code = (await uniLoginCode("weixin")) || "h5-mock-wx";
+    afterThirdLogin(await apiWxLogin(code));
+  } catch (e) {
+    /* 错误提示已由 request 统一处理 */
+  } finally {
+    thirdLogging.value = false;
+  }
+}
+
+async function handleAlipayLogin() {
+  if (thirdLogging.value) return;
+  thirdLogging.value = true;
+  try {
+    const authCode = (await uniLoginCode("alipay")) || "h5-mock-alipay";
+    afterThirdLogin(await apiAlipayLogin(authCode));
+  } catch (e) {
+    /* 错误提示已由 request 统一处理 */
+  } finally {
+    thirdLogging.value = false;
+  }
 }
 </script>
 
@@ -329,5 +403,22 @@ function onThirdPlaceholder() {
     color: #c0c4cc;
     margin-bottom: 24rpx;
   }
+
+  &__btns {
+    display: flex;
+    flex-direction: column;
+    gap: 20rpx;
+  }
+}
+
+.bind-tip {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  background: $theme-color-light;
+  border-radius: 16rpx;
+  padding: 20rpx 24rpx;
+  font-size: 25rpx;
+  color: #1f2329;
 }
 </style>

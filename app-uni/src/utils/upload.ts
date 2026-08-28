@@ -1,6 +1,6 @@
 import { post } from "@/utils/request";
 
-export type UploadScene = "weigh" | "order";
+export type UploadScene = "weigh" | "order" | "avatar";
 
 /** COS 上传签名返回(骨架期后端固定 mock=true，契约见 docs/06) */
 interface CosSignVO {

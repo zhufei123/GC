@@ -58,6 +58,17 @@
           <text>实收金额</text>
           <text class="amount-row__money">¥{{ order.actualAmount || "0.00" }}</text>
         </view>
+        <view v-if="order.payMethod && order.status === 'COMPLETED'" class="amount-row">
+          <text>付款方式</text>
+          <text>
+            {{ payMethodText(order.payMethod) }}
+            <template v-if="order.payoutStatus"> · {{ payoutStatusText(order.payoutStatus) }}</template>
+          </text>
+        </view>
+        <view v-if="order.paidAt" class="amount-row">
+          <text>打款时间</text>
+          <text>{{ order.paidAt }}</text>
+        </view>
       </view>
 
       <view v-if="photos.length" class="card">
@@ -102,7 +113,7 @@ import { ref, computed } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import { getBossOrderDetail, startService } from "@/api/boss";
 import { orderLineItems, type OrderVO } from "@/api/order";
-import { statusText, statusType } from "@/utils/order-status";
+import { statusText, statusType, payMethodText, payoutStatusText } from "@/utils/order-status";
 import { openNavigation } from "@/utils/map-nav";
 
 const order = ref<OrderVO | null>(null);

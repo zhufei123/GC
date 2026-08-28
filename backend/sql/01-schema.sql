@@ -6,6 +6,8 @@ CREATE DATABASE IF NOT EXISTS recycle DEFAULT CHARACTER SET utf8mb4 COLLATE utf8
 USE recycle;
 
 DROP TABLE IF EXISTS sys_log;
+DROP TABLE IF EXISTS notify_log;
+DROP TABLE IF EXISTS payout_order;
 DROP TABLE IF EXISTS sys_role_menu;
 DROP TABLE IF EXISTS sys_admin_role;
 DROP TABLE IF EXISTS sys_menu;
@@ -29,6 +31,7 @@ DROP TABLE IF EXISTS `user`;
 CREATE TABLE `user` (
   id            BIGINT PRIMARY KEY,
   openid_wx     VARCHAR(64)  DEFAULT NULL,
+  unionid_wx    VARCHAR(64)  DEFAULT NULL,
   openid_alipay VARCHAR(64)  DEFAULT NULL,
   phone         VARCHAR(20)  DEFAULT NULL,
   nickname      VARCHAR(64)  DEFAULT NULL,
@@ -203,6 +206,9 @@ CREATE TABLE recycle_order (
   cancel_by        VARCHAR(16)   DEFAULT NULL,
   cancel_reason    VARCHAR(255)  DEFAULT NULL,
   request_id       VARCHAR(64)   DEFAULT NULL,
+  pay_method       VARCHAR(16)   NOT NULL DEFAULT 'OFFLINE' COMMENT 'OFFLINE/WX_TRANSFER/ALIPAY_TRANSFER/WALLET',
+  paid_at          DATETIME      DEFAULT NULL,
+  payout_status    VARCHAR(24)   DEFAULT NULL COMMENT 'SUCCESS/PROCESSING/WAIT_USER_CONFIRM/FAILED',
   accepted_at      DATETIME      DEFAULT NULL,
   served_at        DATETIME      DEFAULT NULL,
   weighed_at       DATETIME      DEFAULT NULL,
@@ -268,7 +274,43 @@ CREATE TABLE wallet_ledger (
   remark      VARCHAR(128)  DEFAULT NULL,
   create_time DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
   KEY idx_wallet_user (user_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='钱包流水(预留未启用)';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='钱包流水';
+
+CREATE TABLE payout_order (
+  id              BIGINT PRIMARY KEY,
+  payout_no       VARCHAR(32)   NOT NULL,
+  order_id        BIGINT        NOT NULL,
+  user_id         BIGINT        NOT NULL,
+  station_id      BIGINT        NOT NULL,
+  channel         VARCHAR(24)   NOT NULL COMMENT 'OFFLINE/WX_TRANSFER/ALIPAY_TRANSFER/WALLET',
+  amount          DECIMAL(12,2) NOT NULL,
+  openid          VARCHAR(64)   DEFAULT NULL,
+  status          VARCHAR(24)   NOT NULL COMMENT 'SUCCESS/PROCESSING/WAIT_USER_CONFIRM/FAILED',
+  channel_bill_no VARCHAR(64)   DEFAULT NULL,
+  package_info    VARCHAR(512)  DEFAULT NULL,
+  fail_reason     VARCHAR(200)  DEFAULT NULL,
+  create_time     DATETIME      NOT NULL,
+  update_time     DATETIME      NOT NULL,
+  deleted         TINYINT       NOT NULL DEFAULT 0,
+  UNIQUE KEY uk_payout_no (payout_no),
+  UNIQUE KEY uk_payout_order (order_id, deleted)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='打款单(站点付客户)';
+
+CREATE TABLE notify_log (
+  id           BIGINT PRIMARY KEY,
+  user_id      BIGINT       NOT NULL,
+  channel      VARCHAR(16)  NOT NULL COMMENT 'WX/ALIPAY/INAPP',
+  template_key VARCHAR(64)  NOT NULL,
+  biz_type     VARCHAR(32)  NOT NULL,
+  biz_id       BIGINT       NOT NULL,
+  title        VARCHAR(80)  DEFAULT NULL,
+  content      VARCHAR(500) DEFAULT NULL,
+  status       VARCHAR(16)  NOT NULL DEFAULT 'SENT',
+  error        VARCHAR(200) DEFAULT NULL,
+  create_time  DATETIME     NOT NULL,
+  deleted      TINYINT      DEFAULT 0,
+  KEY idx_notify_user (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='通知记录';
 
 CREATE TABLE sys_admin (
   id          BIGINT PRIMARY KEY,

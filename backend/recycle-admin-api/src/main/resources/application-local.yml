@@ -15,3 +15,18 @@ spring:
       # 本地 Redis 无密码
       database: 0
       timeout: 3s
+
+app:
+  wx:
+    # 小程序登录（appid+secret 同时非空才走真实 jscode2session，否则 code 即 openid）
+    appid: ""
+    secret: ""
+    # 商家转账（mch-id+api-v3-key，mock=false 且已配置才走真实转账）
+    mch-id: ""
+    api-v3-key: ""
+    # mock=true：微信打款进程内直接成功（WAIT_USER_CONFIRM → SUCCESS），不发起外部 HTTP
+    mock: true
+  alipay:
+    app-id: ""
+    # mock=true：支付宝打款进程内直接成功
+    mock: true

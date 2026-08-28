@@ -1,11 +1,19 @@
 package com.recycle.app.controller.user;
 
 import com.recycle.app.dto.AddressDTO;
+import com.recycle.app.dto.BindPhoneDTO;
+import com.recycle.app.dto.ProfileDTO;
+import com.recycle.app.service.AppAuthService;
 import com.recycle.app.service.AppUserService;
 import com.recycle.app.support.CurrentUser;
+import com.recycle.app.vo.AppLoginVO;
 import com.recycle.app.vo.FavoriteStationVO;
 import com.recycle.app.vo.UserMeVO;
+import com.recycle.app.vo.WalletVO;
+import com.recycle.common.core.PageQuery;
+import com.recycle.common.core.PageResult;
 import com.recycle.common.core.R;
+import com.recycle.common.entity.member.NotifyLog;
 import com.recycle.common.entity.member.UserAddress;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -29,11 +37,37 @@ import java.util.List;
 public class AppUserController {
 
     private final AppUserService userService;
+    private final AppAuthService authService;
 
     @Operation(summary = "当前用户资料")
     @GetMapping("/me")
     public R<UserMeVO> me() {
         return R.ok(userService.me(CurrentUser.id()));
+    }
+
+    @Operation(summary = "三方登录后补绑手机号（号码已注册则合并账号并返回新 token）")
+    @PostMapping("/bind-phone")
+    public R<AppLoginVO> bindPhone(@Valid @RequestBody BindPhoneDTO dto) {
+        return R.ok(authService.bindPhone(CurrentUser.id(), dto));
+    }
+
+    @Operation(summary = "更新昵称/头像")
+    @PutMapping("/profile")
+    public R<Void> updateProfile(@Valid @RequestBody ProfileDTO dto) {
+        userService.updateProfile(CurrentUser.id(), dto);
+        return R.ok();
+    }
+
+    @Operation(summary = "我的消息分页（站内通知）")
+    @GetMapping("/notices")
+    public R<PageResult<NotifyLog>> notices(PageQuery query) {
+        return R.ok(userService.notices(CurrentUser.id(), query));
+    }
+
+    @Operation(summary = "我的钱包（余额+最近流水）")
+    @GetMapping("/wallet")
+    public R<WalletVO> wallet() {
+        return R.ok(userService.wallet(CurrentUser.id()));
     }
 
     @Operation(summary = "地址列表")

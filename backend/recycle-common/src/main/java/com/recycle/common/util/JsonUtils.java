@@ -4,6 +4,7 @@ import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Jackson 3 静态工具（DB JSON 列 ↔ Java 对象）
@@ -35,6 +36,18 @@ public final class JsonUtils {
             });
         } catch (Exception e) {
             return List.of();
+        }
+    }
+
+    public static Map<String, Object> toMap(String json) {
+        if (json == null || json.isBlank()) {
+            return Map.of();
+        }
+        try {
+            return MAPPER.readValue(json, new TypeReference<Map<String, Object>>() {
+            });
+        } catch (Exception e) {
+            return Map.of();
         }
     }
 

@@ -16,6 +16,7 @@ import java.math.BigDecimal;
 public class User extends BaseEntity {
 
     private String openidWx;
+    private String unionidWx;
     private String openidAlipay;
     private String phone;
     private String nickname;

@@ -17,7 +17,10 @@
         { "path": "store/quotes", "style": { "navigationBarTitleText": "门店比价" } },
         { "path": "store/favorites", "style": { "navigationBarTitleText": "我的收藏" } },
         { "path": "help/index", "style": { "navigationBarTitleText": "帮助中心" } },
-        { "path": "search/index", "style": { "navigationBarTitleText": "搜索回收品类" } }
+        { "path": "search/index", "style": { "navigationBarTitleText": "搜索回收品类" } },
+        { "path": "wallet/index", "style": { "navigationBarTitleText": "我的钱包" } },
+        { "path": "notice/index", "style": { "navigationBarTitleText": "消息通知" } },
+        { "path": "profile/index", "style": { "navigationBarTitleText": "个人资料" } }
       ]
     },
     {

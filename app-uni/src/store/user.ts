@@ -10,6 +10,9 @@ export interface LoginPayload {
   recyclerStatus: RecyclerStatus;
   nickname: string;
   storeId?: string | null;
+  /** 三方登录返回：false 时需补绑手机号 */
+  hasPhone?: boolean;
+  isNewUser?: boolean;
 }
 
 const STORAGE_KEY = "RECYCLE_APP_USER";

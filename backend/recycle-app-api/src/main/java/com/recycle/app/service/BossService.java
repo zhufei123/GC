@@ -20,6 +20,7 @@ import com.recycle.common.entity.recycle.Sku;
 import com.recycle.common.entity.store.RecycleStation;
 import com.recycle.common.entity.store.StationSkuPrice;
 import com.recycle.common.entity.trade.OrderItem;
+import com.recycle.common.entity.trade.PayoutOrder;
 import com.recycle.common.entity.trade.RecycleOrder;
 import com.recycle.common.mapper.CategoryMapper;
 import com.recycle.common.mapper.OrderItemMapper;
@@ -58,6 +59,8 @@ public class BossService {
     private final SkuPriceReader skuPriceReader;
     private final StationPriceReader stationPriceReader;
     private final OrderAssembler orderAssembler;
+    private final PayoutService payoutService;
+    private final NotifyService notifyService;
 
     public RecycleStation myStation(Long bossId) {
         RecycleStation station = stationMapper.selectOne(new LambdaQueryWrapper<RecycleStation>()
@@ -144,12 +147,18 @@ public class BossService {
             }
             throw new BizException(ErrorCode.ORDER_TAKEN);
         }
+        RecycleOrder accepted = orderMapper.selectById(orderId);
+        if (accepted != null) {
+            notifyService.inAppQuietly(accepted.getUserId(), "ORDER_ACCEPTED", "订单已接单",
+                    "「" + station.getName() + "」已接单 " + accepted.getOrderNo()
+                            + "，将按预约时间为您服务", "ORDER", orderId);
+        }
     }
 
     /** ACCEPTED → SERVING */
     public void start(Long bossId, Long orderId) {
         RecycleStation station = myStation(bossId);
-        requireStationOrder(station, orderId);
+        RecycleOrder order = requireStationOrder(station, orderId);
         int rows = orderMapper.update(null, new LambdaUpdateWrapper<RecycleOrder>()
                 .eq(RecycleOrder::getId, orderId)
                 .eq(RecycleOrder::getStationId, station.getId())
@@ -159,6 +168,8 @@ public class BossService {
         if (rows == 0) {
             throw new BizException(ErrorCode.ORDER_STATUS_ILLEGAL);
         }
+        notifyService.inAppQuietly(order.getUserId(), "ORDER_SERVING", "服务已开始",
+                "订单 " + order.getOrderNo() + " 回收员已开始上门服务", "ORDER", orderId);
     }
 
     /** 称重：实收明细 + 提交时刻本店报价快照，SERVING → WEIGHED */
@@ -216,10 +227,13 @@ public class BossService {
         if (rows == 0) {
             throw new BizException(ErrorCode.ORDER_STATUS_ILLEGAL);
         }
+        notifyService.inAppQuietly(order.getUserId(), "ORDER_WEIGHED", "称重完成",
+                "订单 " + order.getOrderNo() + " 称重完成，实收金额 ¥" + total, "ORDER", orderId);
         return total;
     }
 
-    /** WEIGHED → COMPLETED，确认金额必须与锁定金额一致 */
+    /** WEIGHED → COMPLETED：确认金额必须与锁定金额一致，按 payMethod 向客户打款（C2B） */
+    @Transactional
     public void complete(Long bossId, Long orderId, CompleteDTO dto) {
         RecycleStation station = myStation(bossId);
         RecycleOrder order = requireStationOrder(station, orderId);
@@ -230,14 +244,36 @@ public class BossService {
                 || dto.getConfirmAmount().compareTo(order.getActualAmount()) != 0) {
             throw new BizException(ErrorCode.PARAM_ERROR, "确认金额与锁定金额不一致");
         }
+        String payMethod = StringUtils.hasText(dto.getPayMethod())
+                ? dto.getPayMethod() : PayoutService.OFFLINE;
+        if (!PayoutService.CHANNELS.contains(payMethod)) {
+            throw new BizException(ErrorCode.PARAM_ERROR, "不支持的打款方式");
+        }
+        PayoutOrder payout = payoutService.payout(order, payMethod);
+        boolean paid = "SUCCESS".equals(payout.getStatus());
         int rows = orderMapper.update(null, new LambdaUpdateWrapper<RecycleOrder>()
                 .eq(RecycleOrder::getId, orderId)
                 .eq(RecycleOrder::getStatus, "WEIGHED")
                 .set(RecycleOrder::getStatus, "COMPLETED")
-                .set(RecycleOrder::getCompletedAt, LocalDateTime.now()));
+                .set(RecycleOrder::getCompletedAt, LocalDateTime.now())
+                .set(RecycleOrder::getPayMethod, payMethod)
+                .set(RecycleOrder::getPayoutStatus, payout.getStatus())
+                .set(paid, RecycleOrder::getPaidAt, LocalDateTime.now()));
         if (rows == 0) {
             throw new BizException(ErrorCode.ORDER_STATUS_ILLEGAL);
         }
+        notifyService.inAppQuietly(order.getUserId(), "ORDER_COMPLETED", "订单已完成",
+                "订单 " + order.getOrderNo() + " 已完成，" + payMethodLabel(payMethod)
+                        + "打款 ¥" + order.getActualAmount(), "ORDER", orderId);
+    }
+
+    private String payMethodLabel(String payMethod) {
+        return switch (payMethod) {
+            case PayoutService.WX_TRANSFER -> "微信";
+            case PayoutService.ALIPAY_TRANSFER -> "支付宝";
+            case PayoutService.WALLET -> "平台钱包";
+            default -> "线下现金";
+        };
     }
 
     public PageResult<OrderVO> orderPage(Long bossId, String status, PageQuery query) {

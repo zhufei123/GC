@@ -30,6 +30,19 @@ public class OrderVO {
     private String appointPeriod;
     private BigDecimal estimateAmount;
     private BigDecimal actualAmount;
+
+    /** OFFLINE/WX_TRANSFER/ALIPAY_TRANSFER/WALLET */
+    private String payMethod;
+
+    /** SUCCESS/PROCESSING/WAIT_USER_CONFIRM/FAILED */
+    private String payoutStatus;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
+    private LocalDateTime paidAt;
+
+    /** 微信商家转账用户确认收款 package 信息（详情返回） */
+    private String packageInfo;
+
     private List<String> images;
     private List<String> weighImages;
     private String remark;

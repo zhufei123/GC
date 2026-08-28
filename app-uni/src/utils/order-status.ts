@@ -24,3 +24,25 @@ export function statusText(status?: string) {
 export function statusType(status?: string) {
   return (status && ORDER_STATUS_TYPE[status]) || "default";
 }
+
+export const PAY_METHOD_TEXT: Record<string, string> = {
+  OFFLINE: "线下现金",
+  WX_TRANSFER: "微信打款",
+  ALIPAY_TRANSFER: "支付宝打款",
+  WALLET: "平台钱包",
+};
+
+export const PAYOUT_STATUS_TEXT: Record<string, string> = {
+  SUCCESS: "打款成功",
+  PROCESSING: "打款处理中",
+  WAIT_USER_CONFIRM: "待用户确认收款",
+  FAILED: "打款失败",
+};
+
+export function payMethodText(payMethod?: string) {
+  return (payMethod && PAY_METHOD_TEXT[payMethod]) || payMethod || "-";
+}
+
+export function payoutStatusText(payoutStatus?: string) {
+  return (payoutStatus && PAYOUT_STATUS_TEXT[payoutStatus]) || payoutStatus || "-";
+}

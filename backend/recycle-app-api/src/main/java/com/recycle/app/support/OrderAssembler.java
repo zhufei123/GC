@@ -4,11 +4,14 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.recycle.app.vo.OrderItemVO;
 import com.recycle.app.vo.OrderVO;
 import com.recycle.common.entity.trade.OrderItem;
+import com.recycle.common.entity.trade.PayoutOrder;
 import com.recycle.common.entity.trade.RecycleOrder;
 import com.recycle.common.mapper.OrderItemMapper;
+import com.recycle.common.mapper.PayoutOrderMapper;
 import com.recycle.common.util.JsonUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import java.util.List;
 
@@ -20,6 +23,7 @@ import java.util.List;
 public class OrderAssembler {
 
     private final OrderItemMapper orderItemMapper;
+    private final PayoutOrderMapper payoutOrderMapper;
 
     public OrderVO toVO(RecycleOrder order, boolean withItems, boolean maskPhone) {
         OrderVO vo = new OrderVO();
@@ -43,6 +47,9 @@ public class OrderAssembler {
         vo.setRemark(order.getRemark());
         vo.setCancelBy(order.getCancelBy());
         vo.setCancelReason(order.getCancelReason());
+        vo.setPayMethod(order.getPayMethod());
+        vo.setPayoutStatus(order.getPayoutStatus());
+        vo.setPaidAt(order.getPaidAt());
         vo.setCreateTime(order.getCreateTime());
         vo.setAcceptedAt(order.getAcceptedAt());
         vo.setServedAt(order.getServedAt());
@@ -58,6 +65,14 @@ public class OrderAssembler {
             vo.setActualItems(items.stream()
                     .filter(i -> "ACTUAL".equals(i.getItemType()))
                     .map(this::toItemVO).toList());
+            // 详情补充打款单 package_info（微信商家转账确认收款用）
+            if (StringUtils.hasText(order.getPayoutStatus())) {
+                PayoutOrder payout = payoutOrderMapper.selectOne(new LambdaQueryWrapper<PayoutOrder>()
+                        .eq(PayoutOrder::getOrderId, order.getId()));
+                if (payout != null) {
+                    vo.setPackageInfo(payout.getPackageInfo());
+                }
+            }
         }
         return vo;
     }

@@ -52,6 +52,8 @@ public class SaTokenConfig implements WebMvcConfigurer {
                                     "/app-api/recycle/**",
                                     "/app-api/store/**",
                                     "/app-api/notices/**",
+                                    // 支付渠道异步回调无登录态（接入后以验签保证安全）
+                                    "/app-api/pay/notify/**",
                                     "/app-api/boss/**")
                             .check(r -> {
                                 if (!StpKit.USER.isLogin() && !StpKit.BOSS.isLogin()) {

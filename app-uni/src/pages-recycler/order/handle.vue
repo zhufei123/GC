@@ -97,13 +97,36 @@
       </view>
     </template>
 
-    <!-- 收款步骤 -->
+    <!-- 付款步骤（C2B：站点付客户） -->
     <template v-else>
       <view class="card complete">
         <wd-icon name="wallet" size="88rpx" color="#07c160" />
-        <view class="complete__label">应付客户金额（线下现金/转账）</view>
+        <view class="complete__label">应付客户金额</view>
         <view class="complete__amount">¥{{ lockedAmount }}</view>
         <view class="complete__hint">金额已按称重时生效价锁定</view>
+      </view>
+
+      <view class="card">
+        <view class="card__title">付款方式</view>
+        <view
+          v-for="opt in PAY_METHOD_OPTIONS"
+          :key="opt.value"
+          class="pay-option"
+          :class="{ 'pay-option--active': payMethod === opt.value }"
+          @tap="payMethod = opt.value"
+        >
+          <view class="pay-option__icon" :style="{ background: opt.bg }">
+            <wd-icon :name="opt.icon" size="34rpx" :color="opt.color" />
+          </view>
+          <view class="pay-option__info">
+            <view class="pay-option__name">{{ opt.label }}</view>
+            <view class="pay-option__desc">{{ opt.desc }}</view>
+          </view>
+          <view class="pay-option__radio" :class="{ 'pay-option__radio--on': payMethod === opt.value }">
+            <wd-icon v-if="payMethod === opt.value" name="check-bold" size="22rpx" color="#ffffff" />
+          </view>
+        </view>
+
         <wd-button
           type="primary"
           block
@@ -112,7 +135,7 @@
           custom-class="complete__btn"
           @click="doComplete"
         >
-          确认已线下付款，完成订单
+          {{ payMethod === "OFFLINE" ? "确认已线下付款，完成订单" : "确认打款，完成订单" }}
         </wd-button>
       </view>
     </template>
@@ -138,7 +161,7 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
-import { getBossOrderDetail, getAvailableSkus, submitWeigh, completeOrder } from "@/api/boss";
+import { getBossOrderDetail, getAvailableSkus, submitWeigh, completeOrder, type PayMethod } from "@/api/boss";
 import { orderLineItems, type OrderVO } from "@/api/order";
 import { chooseAndUpload } from "@/utils/upload";
 
@@ -152,8 +175,23 @@ interface WeighRow {
 
 const MAX_PHOTOS = 6;
 
+const PAY_METHOD_OPTIONS: Array<{
+  value: PayMethod;
+  label: string;
+  desc: string;
+  icon: string;
+  color: string;
+  bg: string;
+}> = [
+  { value: "OFFLINE", label: "线下现金", desc: "当面付清，平台仅记账", icon: "cash", color: "#ff8f1f", bg: "#fff3e5" },
+  { value: "WX_TRANSFER", label: "微信打款", desc: "转账到客户微信零钱（需绑定微信）", icon: "chat", color: "#07c160", bg: "#e8f9ef" },
+  { value: "ALIPAY_TRANSFER", label: "支付宝打款", desc: "转账到客户支付宝（需绑定支付宝）", icon: "wallet", color: "#4d80f0", bg: "#e8f0fe" },
+  { value: "WALLET", label: "平台钱包", desc: "打入客户平台钱包余额", icon: "money-circle", color: "#9c6ade", bg: "#f3ebfe" },
+];
+
 const order = ref<OrderVO | null>(null);
 const step = ref<"weigh" | "complete">("weigh");
+const payMethod = ref<PayMethod>("OFFLINE");
 const rows = ref<WeighRow[]>([]);
 const photos = ref<string[]>([]);
 const submitting = ref(false);
@@ -266,7 +304,7 @@ async function doWeigh() {
 async function doComplete() {
   submitting.value = true;
   try {
-    await completeOrder(orderId, lockedAmount.value);
+    await completeOrder(orderId, lockedAmount.value, payMethod.value);
     uni.showToast({ title: "订单已完成", icon: "success" });
     setTimeout(() => {
       uni.reLaunch({ url: "/pages-recycler/index?tab=2" });
@@ -517,6 +555,62 @@ onLoad((options) => {
   }
 }
 
+.pay-option {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 22rpx 16rpx;
+  border-radius: 16rpx;
+  border: 2rpx solid transparent;
+
+  &--active {
+    border-color: $theme-color;
+    background: $theme-color-light;
+  }
+
+  &__icon {
+    width: 68rpx;
+    height: 68rpx;
+    border-radius: 18rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  &__info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__name {
+    font-size: 28rpx;
+    font-weight: 600;
+  }
+
+  &__desc {
+    margin-top: 4rpx;
+    font-size: 22rpx;
+    color: #86909c;
+  }
+
+  &__radio {
+    width: 36rpx;
+    height: 36rpx;
+    border-radius: 50%;
+    border: 2rpx solid #dcdfe6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+
+    &--on {
+      background: $theme-color;
+      border-color: $theme-color;
+    }
+  }
+}
+
 .complete {
   display: flex;
   flex-direction: column;
@@ -541,12 +635,12 @@ onLoad((options) => {
     font-size: 22rpx;
     color: #c0c4cc;
   }
+}
 
-  :deep(.complete__btn) {
-    margin-top: 56rpx;
-    border-radius: 48rpx !important;
-    width: 100%;
-  }
+:deep(.complete__btn) {
+  margin-top: 40rpx;
+  border-radius: 48rpx !important;
+  width: 100%;
 }
 
 .sku-picker {

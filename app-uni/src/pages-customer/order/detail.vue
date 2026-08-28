@@ -55,6 +55,25 @@
         </view>
       </view>
 
+      <!-- 打款信息（C2B：回收站付客户） -->
+      <view v-if="order.status === 'COMPLETED' && order.payMethod" class="card">
+        <view class="card__title">打款信息</view>
+        <view class="pay-row">
+          <text class="pay-row__label">打款方式</text>
+          <text>{{ payMethodText(order.payMethod) }}</text>
+        </view>
+        <view class="pay-row">
+          <text class="pay-row__label">打款状态</text>
+          <wd-tag :type="order.payoutStatus === 'SUCCESS' ? 'success' : 'warning'" plain>
+            {{ payoutStatusText(order.payoutStatus) }}
+          </wd-tag>
+        </view>
+        <view v-if="order.paidAt" class="pay-row">
+          <text class="pay-row__label">打款时间</text>
+          <text>{{ order.paidAt }}</text>
+        </view>
+      </view>
+
       <view v-if="photos.length" class="card">
         <view class="card__title">现场照片</view>
         <view class="photo-wall">
@@ -131,7 +150,7 @@ import { ref, computed } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import { getOrderDetail, cancelOrder, getOrderReview, submitOrderReview } from "@/api/order";
 import type { OrderVO, OrderReviewVO } from "@/api/order";
-import { statusText } from "@/utils/order-status";
+import { statusText, payMethodText, payoutStatusText } from "@/utils/order-status";
 
 const RATING_TEXTS: Record<number, string> = {
   1: "很不满意",
@@ -215,7 +234,7 @@ const statusDesc = computed(() => {
     case "SERVING":
       return "回收员正在上门服务中";
     case "WEIGHED":
-      return "已称重，等待线下付款完成";
+      return "已称重，等待回收站付款完成";
     case "COMPLETED":
       return "订单已完成，感谢您的环保行动";
     case "CANCELLED":
@@ -365,6 +384,19 @@ onLoad((options) => {
   padding: 10rpx 0;
   font-size: 27rpx;
   color: #4e5969;
+}
+
+.pay-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12rpx 0;
+  font-size: 27rpx;
+  color: #1f2329;
+
+  &__label {
+    color: #86909c;
+  }
 }
 
 .photo-wall {

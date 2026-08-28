@@ -1,0 +1,44 @@
+-- 07: 支付打款(C2B 站点付客户) + 小程序登录 + 站内通知
+USE recycle;
+
+ALTER TABLE recycle_order ADD COLUMN pay_method VARCHAR(16) NOT NULL DEFAULT 'OFFLINE' COMMENT 'OFFLINE/WX_TRANSFER/ALIPAY_TRANSFER/WALLET';
+ALTER TABLE recycle_order ADD COLUMN paid_at DATETIME NULL;
+ALTER TABLE recycle_order ADD COLUMN payout_status VARCHAR(24) NULL COMMENT 'SUCCESS/PROCESSING/WAIT_USER_CONFIRM/FAILED';
+
+CREATE TABLE payout_order (
+  id BIGINT PRIMARY KEY,
+  payout_no VARCHAR(32) NOT NULL,
+  order_id BIGINT NOT NULL,
+  user_id BIGINT NOT NULL,
+  station_id BIGINT NOT NULL,
+  channel VARCHAR(24) NOT NULL COMMENT 'OFFLINE/WX_TRANSFER/ALIPAY_TRANSFER/WALLET',
+  amount DECIMAL(12,2) NOT NULL,
+  openid VARCHAR(64) NULL,
+  status VARCHAR(24) NOT NULL COMMENT 'SUCCESS/PROCESSING/WAIT_USER_CONFIRM/FAILED',
+  channel_bill_no VARCHAR(64) NULL,
+  package_info VARCHAR(512) NULL,
+  fail_reason VARCHAR(200) NULL,
+  create_time DATETIME NOT NULL,
+  update_time DATETIME NOT NULL,
+  deleted TINYINT NOT NULL DEFAULT 0,
+  UNIQUE KEY uk_payout_no (payout_no),
+  UNIQUE KEY uk_payout_order (order_id, deleted)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='打款单(站点付客户)';
+
+CREATE TABLE notify_log (
+  id BIGINT PRIMARY KEY,
+  user_id BIGINT NOT NULL,
+  channel VARCHAR(16) NOT NULL COMMENT 'WX/ALIPAY/INAPP',
+  template_key VARCHAR(64) NOT NULL,
+  biz_type VARCHAR(32) NOT NULL,
+  biz_id BIGINT NOT NULL,
+  title VARCHAR(80) NULL,
+  content VARCHAR(500) NULL,
+  status VARCHAR(16) NOT NULL DEFAULT 'SENT',
+  error VARCHAR(200) NULL,
+  create_time DATETIME NOT NULL,
+  deleted TINYINT DEFAULT 0,
+  KEY idx_notify_user (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='通知记录';
+
+ALTER TABLE user ADD COLUMN unionid_wx VARCHAR(64) NULL;

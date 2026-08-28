@@ -12,6 +12,33 @@
 
     <view class="mine__body">
       <view class="menu-card">
+        <view class="menu-item" @tap="goWallet">
+          <view class="menu-item__left">
+            <view class="menu-item__icon" style="background: #f3ebfe">
+              <wd-icon name="money-circle" size="36rpx" color="#9c6ade" />
+            </view>
+            <text>我的钱包</text>
+          </view>
+          <wd-icon name="arrow-right" size="30rpx" color="#c0c4cc" />
+        </view>
+        <view class="menu-item" @tap="goNotice">
+          <view class="menu-item__left">
+            <view class="menu-item__icon" style="background: #fff8e0">
+              <wd-icon name="notification" size="36rpx" color="#f5a623" />
+            </view>
+            <text>消息通知</text>
+          </view>
+          <wd-icon name="arrow-right" size="30rpx" color="#c0c4cc" />
+        </view>
+        <view class="menu-item" @tap="goProfile">
+          <view class="menu-item__left">
+            <view class="menu-item__icon" style="background: #e8f9ef">
+              <wd-icon name="user" size="36rpx" color="#07c160" />
+            </view>
+            <text>个人资料</text>
+          </view>
+          <wd-icon name="arrow-right" size="30rpx" color="#c0c4cc" />
+        </view>
         <view class="menu-item" @tap="goAddress">
           <view class="menu-item__left">
             <view class="menu-item__icon" style="background: #e8f9ef">
@@ -89,6 +116,18 @@ const bossHint = computed(() => {
 
 function refresh() {
   /* 静态数据，无需刷新 */
+}
+
+function goWallet() {
+  uni.navigateTo({ url: "/pages-customer/wallet/index" });
+}
+
+function goNotice() {
+  uni.navigateTo({ url: "/pages-customer/notice/index" });
+}
+
+function goProfile() {
+  uni.navigateTo({ url: "/pages-customer/profile/index" });
 }
 
 function goAddress() {

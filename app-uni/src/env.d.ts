@@ -14,6 +14,8 @@ interface ImportMetaEnv {
   readonly VITE_AMAP_KEY: string
   readonly VITE_AMAP_SECURITY_CODE: string
   readonly VITE_MAP_QQ_KEY: string
+  /** 微信订阅消息模板 id(接单进度)，为空则跳过订阅 */
+  readonly VITE_WX_TMPL_ACCEPT: string
 }
 
 interface ImportMeta {

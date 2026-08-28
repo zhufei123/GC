@@ -45,6 +45,14 @@ public class RecycleOrder extends BaseEntity {
     private String cancelBy;
     private String cancelReason;
     private String requestId;
+    /** OFFLINE/WX_TRANSFER/ALIPAY_TRANSFER/WALLET */
+    private String payMethod;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
+    private LocalDateTime paidAt;
+
+    /** SUCCESS/PROCESSING/WAIT_USER_CONFIRM/FAILED */
+    private String payoutStatus;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
     private LocalDateTime acceptedAt;

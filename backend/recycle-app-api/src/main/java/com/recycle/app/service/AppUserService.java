@@ -2,19 +2,28 @@ package com.recycle.app.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.recycle.app.dto.AddressDTO;
+import com.recycle.app.dto.ProfileDTO;
 import com.recycle.app.vo.FavoriteStationVO;
 import com.recycle.app.vo.UserMeVO;
+import com.recycle.app.vo.WalletVO;
 import com.recycle.common.core.BizException;
 import com.recycle.common.core.ErrorCode;
+import com.recycle.common.core.PageQuery;
+import com.recycle.common.core.PageResult;
+import com.recycle.common.entity.member.NotifyLog;
 import com.recycle.common.entity.member.User;
 import com.recycle.common.entity.member.UserAddress;
 import com.recycle.common.entity.member.UserFavoriteStation;
+import com.recycle.common.entity.member.WalletLedger;
 import com.recycle.common.entity.store.RecycleStation;
+import com.recycle.common.mapper.NotifyLogMapper;
 import com.recycle.common.mapper.RecycleStationMapper;
 import com.recycle.common.mapper.UserAddressMapper;
 import com.recycle.common.mapper.UserFavoriteStationMapper;
 import com.recycle.common.mapper.UserMapper;
+import com.recycle.common.mapper.WalletLedgerMapper;
 import com.recycle.common.util.JsonUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DuplicateKeyException;
@@ -22,6 +31,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -35,6 +45,8 @@ public class AppUserService {
     private final UserAddressMapper addressMapper;
     private final RecycleStationMapper stationMapper;
     private final UserFavoriteStationMapper favoriteMapper;
+    private final WalletLedgerMapper walletLedgerMapper;
+    private final NotifyLogMapper notifyLogMapper;
 
     public UserMeVO me(Long userId) {
         User user = userMapper.selectById(userId);
@@ -57,6 +69,45 @@ public class AppUserService {
             }
         }
         return vo;
+    }
+
+    /** 更新昵称/头像 */
+    public void updateProfile(Long userId, ProfileDTO dto) {
+        User user = userMapper.selectById(userId);
+        if (user == null) {
+            throw new BizException(ErrorCode.USER_NOT_FOUND);
+        }
+        if (StringUtils.hasText(dto.getNickname())) {
+            user.setNickname(dto.getNickname());
+        }
+        if (StringUtils.hasText(dto.getAvatar())) {
+            user.setAvatar(dto.getAvatar());
+        }
+        userMapper.updateById(user);
+    }
+
+    /** 钱包：余额 + 最近流水 */
+    public WalletVO wallet(Long userId) {
+        User user = userMapper.selectById(userId);
+        if (user == null) {
+            throw new BizException(ErrorCode.USER_NOT_FOUND);
+        }
+        WalletVO vo = new WalletVO();
+        vo.setBalance(user.getBalance() == null ? BigDecimal.ZERO : user.getBalance());
+        vo.setList(walletLedgerMapper.selectList(new LambdaQueryWrapper<WalletLedger>()
+                .eq(WalletLedger::getUserId, userId)
+                .orderByDesc(WalletLedger::getId)
+                .last("LIMIT 20")));
+        return vo;
+    }
+
+    /** 我的消息分页（notify_log） */
+    public PageResult<NotifyLog> notices(Long userId, PageQuery query) {
+        Page<NotifyLog> page = notifyLogMapper.selectPage(query.toPage(),
+                new LambdaQueryWrapper<NotifyLog>()
+                        .eq(NotifyLog::getUserId, userId)
+                        .orderByDesc(NotifyLog::getId));
+        return PageResult.of(page);
     }
 
     public List<UserAddress> listAddress(Long userId) {

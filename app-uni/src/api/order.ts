@@ -33,6 +33,13 @@ export interface OrderVO {
   appointPeriod?: string;
   estimateAmount?: string;
   actualAmount?: string;
+  /** OFFLINE/WX_TRANSFER/ALIPAY_TRANSFER/WALLET */
+  payMethod?: string;
+  /** SUCCESS/PROCESSING/WAIT_USER_CONFIRM/FAILED */
+  payoutStatus?: string;
+  paidAt?: string;
+  /** 微信商家转账确认收款 package 信息(详情返回) */
+  packageInfo?: string;
   createTime?: string;
   estimateItems?: OrderLineItem[];
   actualItems?: OrderLineItem[];

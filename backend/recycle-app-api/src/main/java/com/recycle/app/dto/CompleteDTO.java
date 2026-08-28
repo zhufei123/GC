@@ -10,4 +10,7 @@ public class CompleteDTO {
 
     @NotNull(message = "确认金额不能为空")
     private BigDecimal confirmAmount;
+
+    /** OFFLINE(默认)/WX_TRANSFER/ALIPAY_TRANSFER/WALLET */
+    private String payMethod;
 }

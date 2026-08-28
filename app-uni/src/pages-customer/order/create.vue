@@ -237,6 +237,24 @@ function toggleSku(sku: SkuItem) {
   }
 }
 
+/** 下单成功后请求订阅「接单进度」消息（仅微信小程序，模板 id 未配置则跳过） */
+function requestOrderSubscribe() {
+  // #ifdef MP-WEIXIN
+  const tmplId = import.meta.env.VITE_WX_TMPL_ACCEPT;
+  if (!tmplId) return;
+  try {
+    (uni as any).requestSubscribeMessage({
+      tmplIds: [tmplId],
+      complete: () => {
+        /* 授权与否均不阻断下单流程 */
+      },
+    });
+  } catch (e) {
+    /* 忽略订阅异常 */
+  }
+  // #endif
+}
+
 function chooseAddress() {
   uni.navigateTo({ url: "/pages-customer/address/list?select=1" });
 }
@@ -356,6 +374,7 @@ async function submit() {
       remark: remark.value,
       requestId: `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
     });
+    requestOrderSubscribe();
     uni.showToast({ title: "预约成功", icon: "success" });
     setTimeout(() => {
       uni.reLaunch({ url: "/pages-customer/index?tab=2" });

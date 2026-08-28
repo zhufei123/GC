@@ -1,5 +1,6 @@
 package com.recycle.app.controller.auth;
 
+import com.recycle.app.dto.AlipayLoginDTO;
 import com.recycle.app.dto.PhoneLoginDTO;
 import com.recycle.app.dto.SmsCodeDTO;
 import com.recycle.app.dto.WxLoginDTO;
@@ -36,10 +37,16 @@ public class AppAuthController {
         return R.ok(authService.phoneLogin(dto));
     }
 
-    @Operation(summary = "微信登录（mock：code 当 openid）")
+    @Operation(summary = "微信登录（配置 appid+secret 走 jscode2session，否则 code 当 openid）")
     @PostMapping("/wx-login")
     public R<AppLoginVO> wxLogin(@Valid @RequestBody WxLoginDTO dto) {
         return R.ok(authService.wxLogin(dto));
+    }
+
+    @Operation(summary = "支付宝登录（mock：authCode 当 openid）")
+    @PostMapping("/alipay-login")
+    public R<AppLoginVO> alipayLogin(@Valid @RequestBody AlipayLoginDTO dto) {
+        return R.ok(authService.alipayLogin(dto));
     }
 
     @Operation(summary = "登出当前端")

@@ -83,7 +83,7 @@ public class BossController {
         return R.ok(Map.of("actualAmount", total));
     }
 
-    @Operation(summary = "完成订单 WEIGHED→COMPLETED（线下付款，金额需一致）")
+    @Operation(summary = "完成订单 WEIGHED→COMPLETED（按 payMethod 打款给客户，金额需一致）")
     @PostMapping("/order/{id}/complete")
     public R<Void> complete(@PathVariable Long id, @Valid @RequestBody CompleteDTO dto) {
         bossService.complete(CurrentUser.bossId(), id, dto);
