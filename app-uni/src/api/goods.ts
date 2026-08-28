@@ -28,6 +28,10 @@ export function getSkuList(categoryId?: string) {
   });
 }
 
+export function searchSkus(keyword: string) {
+  return get<SkuItem[]>("/app-api/recycle/sku/search", { keyword }, { silent: true });
+}
+
 /**
  * 拉取某分类节点下全部 SKU。
  * 先按节点 id 查询；若后端实现不含子级导致为空，则并发查询叶子子分类合并。

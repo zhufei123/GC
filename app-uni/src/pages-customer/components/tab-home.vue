@@ -9,7 +9,7 @@
         </view>
         <view class="home__brand">绿色回收</view>
       </view>
-      <view class="home__search" @tap="$emit('switch-tab', 1)">
+      <view class="home__search" @tap="goSearch">
         <wd-icon name="search" size="32rpx" color="#9ca3af" />
         <text>搜索废纸 / 金属 / 塑料回收价</text>
       </view>
@@ -165,6 +165,10 @@ async function refresh(force = false) {
   } catch (e) {
     /* 保持空态 */
   }
+}
+
+function goSearch() {
+  uni.navigateTo({ url: "/pages-customer/search/index" });
 }
 
 function goCreate() {
