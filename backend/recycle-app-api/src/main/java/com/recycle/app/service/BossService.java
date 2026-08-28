@@ -65,8 +65,7 @@ public class BossService {
         vo.setStoreName(station.getName());
         vo.setBusinessStatus(station.getBusinessStatus());
         vo.setAuditStatus(station.getAuditStatus());
-        vo.setPendingPoolCount(orderMapper.selectCount(new LambdaQueryWrapper<RecycleOrder>()
-                .eq(RecycleOrder::getStatus, "PENDING")));
+        vo.setPendingPoolCount(orderMapper.selectCount(visiblePending(station.getId())));
         vo.setTodayAcceptedCount(orderMapper.selectCount(new LambdaQueryWrapper<RecycleOrder>()
                 .eq(RecycleOrder::getStationId, station.getId())
                 .ge(RecycleOrder::getAcceptedAt, todayStart)));
@@ -96,13 +95,11 @@ public class BossService {
         return vo;
     }
 
-    /** 接单大厅：PENDING 订单脱敏摘要 */
+    /** 接单大厅：PENDING 上门单 + 指定本店的到店单 */
     public PageResult<OrderVO> pool(Long bossId, PageQuery query) {
-        myStation(bossId);
+        RecycleStation station = myStation(bossId);
         Page<RecycleOrder> page = orderMapper.selectPage(query.toPage(),
-                new LambdaQueryWrapper<RecycleOrder>()
-                        .eq(RecycleOrder::getStatus, "PENDING")
-                        .orderByAsc(RecycleOrder::getCreateTime));
+                visiblePending(station.getId()).orderByAsc(RecycleOrder::getCreateTime));
         return PageResult.of(page, o -> {
             // 带预估明细，供大厅展示品类摘要
             OrderVO vo = orderAssembler.toVO(o, true, true);
@@ -111,18 +108,30 @@ public class BossService {
         });
     }
 
-    /** 抢单：乐观锁 WHERE status=PENDING，抢不到 20403 */
+    /** 抢单：上门单任意店可抢；到店单仅指定门店，乐观锁 WHERE status=PENDING */
     public void accept(Long bossId, Long orderId) {
         RecycleStation station = requireWorkableStation(bossId);
         int rows = orderMapper.update(null, new LambdaUpdateWrapper<RecycleOrder>()
                 .eq(RecycleOrder::getId, orderId)
                 .eq(RecycleOrder::getStatus, "PENDING")
+                .and(w -> w.isNull(RecycleOrder::getStationId)
+                        .or()
+                        .eq(RecycleOrder::getStationId, station.getId()))
                 .set(RecycleOrder::getStatus, "ACCEPTED")
                 .set(RecycleOrder::getStationId, station.getId())
                 .set(RecycleOrder::getAcceptedAt, LocalDateTime.now()));
         if (rows == 0) {
             RecycleOrder order = orderMapper.selectById(orderId);
-            throw new BizException(order == null ? ErrorCode.ORDER_NOT_FOUND : ErrorCode.ORDER_TAKEN);
+            if (order == null) {
+                throw new BizException(ErrorCode.ORDER_NOT_FOUND);
+            }
+            if (!"PENDING".equals(order.getStatus())) {
+                throw new BizException(ErrorCode.ORDER_TAKEN);
+            }
+            if (order.getStationId() != null && !order.getStationId().equals(station.getId())) {
+                throw new BizException(ErrorCode.ORDER_NOT_FOUND, "非本店订单");
+            }
+            throw new BizException(ErrorCode.ORDER_TAKEN);
         }
     }
 
@@ -162,7 +171,7 @@ public class BossService {
         BigDecimal total = BigDecimal.ZERO;
         for (WeighDTO.WeighItem itemDto : dto.getItems()) {
             Sku sku = skus.get(itemDto.getSkuId());
-            if (sku == null) {
+            if (sku == null || sku.getStatus() == null || sku.getStatus() != 1) {
                 throw new BizException(ErrorCode.SKU_OFFLINE);
             }
             BigDecimal price = prices.getOrDefault(sku.getId(), BigDecimal.ZERO);
@@ -299,6 +308,15 @@ public class BossService {
             throw new BizException(ErrorCode.ORDER_NOT_FOUND);
         }
         return order;
+    }
+
+    /** PENDING 上门单（未指定门店）+ 指定本店的到店单 */
+    private LambdaQueryWrapper<RecycleOrder> visiblePending(Long stationId) {
+        return new LambdaQueryWrapper<RecycleOrder>()
+                .eq(RecycleOrder::getStatus, "PENDING")
+                .and(w -> w.isNull(RecycleOrder::getStationId)
+                        .or()
+                        .eq(RecycleOrder::getStationId, stationId));
     }
 
     private String maskName(String name) {

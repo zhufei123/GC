@@ -13,15 +13,18 @@ import com.recycle.common.core.PageQuery;
 import com.recycle.common.core.PageResult;
 import com.recycle.common.entity.member.UserAddress;
 import com.recycle.common.entity.recycle.Sku;
+import com.recycle.common.entity.store.RecycleStation;
 import com.recycle.common.entity.trade.OrderItem;
 import com.recycle.common.entity.trade.RecycleOrder;
 import com.recycle.common.mapper.OrderItemMapper;
 import com.recycle.common.mapper.RecycleOrderMapper;
+import com.recycle.common.mapper.RecycleStationMapper;
 import com.recycle.common.mapper.SkuMapper;
 import com.recycle.common.mapper.UserAddressMapper;
 import com.recycle.common.support.SkuPriceReader;
 import com.recycle.common.util.JsonUtils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -48,15 +51,17 @@ public class AppOrderService {
     private final RecycleOrderMapper orderMapper;
     private final OrderItemMapper orderItemMapper;
     private final UserAddressMapper addressMapper;
+    private final RecycleStationMapper stationMapper;
     private final SkuMapper skuMapper;
     private final SkuPriceReader skuPriceReader;
     private final OrderAssembler orderAssembler;
 
     @Transactional
     public Long create(Long userId, OrderCreateDTO dto) {
-        // requestId 幂等
+        // requestId 幂等：仅对本用户生效
         if (StringUtils.hasText(dto.getRequestId())) {
             RecycleOrder existing = orderMapper.selectOne(new LambdaQueryWrapper<RecycleOrder>()
+                    .eq(RecycleOrder::getUserId, userId)
                     .eq(RecycleOrder::getRequestId, dto.getRequestId()));
             if (existing != null) {
                 return existing.getId();
@@ -72,7 +77,11 @@ public class AppOrderService {
         RecycleOrder order = new RecycleOrder();
         order.setOrderNo(genOrderNo());
         order.setUserId(userId);
-        order.setType(StringUtils.hasText(dto.getType()) ? dto.getType() : "PICKUP");
+        String type = StringUtils.hasText(dto.getType()) ? dto.getType() : "PICKUP";
+        if (!"PICKUP".equals(type) && !"DROPOFF".equals(type)) {
+            throw new BizException(ErrorCode.PARAM_ERROR, "订单类型无效");
+        }
+        order.setType(type);
         order.setStatus("PENDING");
         order.setAppointDate(dto.getAppointDate());
         order.setAppointPeriod(dto.getAppointPeriod());
@@ -96,8 +105,21 @@ public class AppOrderService {
             order.setAddress(joinAddress(address));
             order.setLongitude(address.getLongitude());
             order.setLatitude(address.getLatitude());
-        } else if (dto.getStoreId() != null) {
-            order.setStationId(dto.getStoreId());
+        } else if ("DROPOFF".equals(order.getType())) {
+            if (dto.getStoreId() == null) {
+                throw new BizException(ErrorCode.PARAM_ERROR, "到店单必须选择门店");
+            }
+            RecycleStation store = stationMapper.selectById(dto.getStoreId());
+            if (store == null || store.getStatus() == null || store.getStatus() != 1
+                    || !"approved".equals(store.getAuditStatus())) {
+                throw new BizException(ErrorCode.STORE_NOT_APPROVED, "门店不存在或未营业");
+            }
+            order.setStationId(store.getId());
+            order.setReceiver(store.getContactName());
+            order.setPhone(store.getPhone());
+            order.setAddress(joinStoreAddress(store));
+            order.setLongitude(store.getLongitude());
+            order.setLatitude(store.getLatitude());
         }
 
         // 预估明细 + 当前价快照
@@ -116,6 +138,9 @@ public class AppOrderService {
             }
             BigDecimal price = prices.getOrDefault(sku.getId(), BigDecimal.ZERO);
             BigDecimal weight = itemDto.getEstimateWeight();
+            if (weight == null || weight.compareTo(BigDecimal.ZERO) <= 0) {
+                throw new BizException(ErrorCode.PARAM_ERROR, "预估重量必须大于 0");
+            }
             BigDecimal amount = price.multiply(weight).setScale(2, RoundingMode.HALF_UP);
             estimateAmount = estimateAmount.add(amount);
 
@@ -131,7 +156,19 @@ public class AppOrderService {
             items.add(item);
         }
         order.setEstimateAmount(estimateAmount);
-        orderMapper.insert(order);
+        try {
+            orderMapper.insert(order);
+        } catch (DuplicateKeyException e) {
+            if (StringUtils.hasText(dto.getRequestId())) {
+                RecycleOrder existing = orderMapper.selectOne(new LambdaQueryWrapper<RecycleOrder>()
+                        .eq(RecycleOrder::getUserId, userId)
+                        .eq(RecycleOrder::getRequestId, dto.getRequestId()));
+                if (existing != null) {
+                    return existing.getId();
+                }
+            }
+            throw e;
+        }
         for (OrderItem item : items) {
             item.setOrderId(order.getId());
             orderItemMapper.insert(item);
@@ -185,6 +222,23 @@ public class AppOrderService {
             sb.append(a.getStreet());
         }
         sb.append(a.getDetail());
+        return sb.toString();
+    }
+
+    private String joinStoreAddress(RecycleStation s) {
+        StringBuilder sb = new StringBuilder();
+        if (StringUtils.hasText(s.getProvince())) {
+            sb.append(s.getProvince());
+        }
+        if (StringUtils.hasText(s.getCity())) {
+            sb.append(s.getCity());
+        }
+        if (StringUtils.hasText(s.getDistrict())) {
+            sb.append(s.getDistrict());
+        }
+        if (StringUtils.hasText(s.getAddress())) {
+            sb.append(s.getAddress());
+        }
         return sb.toString();
     }
 

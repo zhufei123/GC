@@ -198,7 +198,7 @@ CREATE TABLE recycle_order (
   update_time      DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   deleted          TINYINT       NOT NULL DEFAULT 0,
   UNIQUE KEY uk_order_no (order_no),
-  UNIQUE KEY uk_order_req (request_id),
+  UNIQUE KEY uk_order_req (user_id, request_id),
   KEY idx_order_user (user_id, status),
   KEY idx_order_station (station_id, status),
   KEY idx_order_status (status, create_time)

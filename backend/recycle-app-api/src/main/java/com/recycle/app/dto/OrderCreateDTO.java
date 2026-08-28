@@ -1,8 +1,10 @@
 package com.recycle.app.dto;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -13,6 +15,7 @@ import java.util.List;
 public class OrderCreateDTO {
 
     /** PICKUP 上门 / DROPOFF 到店 */
+    @Pattern(regexp = "PICKUP|DROPOFF", message = "订单类型无效")
     private String type = "PICKUP";
 
     private Long addressId;
@@ -42,6 +45,7 @@ public class OrderCreateDTO {
         private Long skuId;
 
         @NotNull(message = "预估重量不能为空")
+        @DecimalMin(value = "0", inclusive = false, message = "预估重量必须大于 0")
         private BigDecimal estimateWeight;
     }
 }
