@@ -11,9 +11,9 @@ public class WorkbenchVO {
     private String storeName;
     private Integer businessStatus;
     private String auditStatus;
-    private Long pendingPoolCount;
-    private Long todayAcceptedCount;
-    private Long todayCompletedCount;
+    private long pendingPoolCount;
+    private long todayAcceptedCount;
+    private long todayCompletedCount;
     private BigDecimal todayAmount;
-    private Long servingCount;
+    private long servingCount;
 }

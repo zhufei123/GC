@@ -2,9 +2,12 @@ package com.recycle.common.config;
 
 import cn.dev33.satoken.interceptor.SaInterceptor;
 import cn.dev33.satoken.router.SaRouter;
+import cn.dev33.satoken.strategy.SaStrategy;
+import cn.dev33.satoken.util.SaFoxUtil;
 import com.recycle.common.core.BizException;
 import com.recycle.common.core.ErrorCode;
 import com.recycle.common.satoken.StpKit;
+import jakarta.annotation.PostConstruct;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -17,6 +20,20 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
  */
 @Configuration
 public class SaTokenConfig implements WebMvcConfigurer {
+
+    /** 超管权限 ["*:*:*"] 匹配任意权限码（含两段码如 dashboard:view） */
+    @PostConstruct
+    public void tweakPermissionMatch() {
+        SaStrategy.instance.hasElement = (list, element) -> {
+            if (list == null || list.isEmpty()) {
+                return false;
+            }
+            if (list.contains("*") || list.contains("*:*:*") || list.contains(element)) {
+                return true;
+            }
+            return list.stream().anyMatch(pattern -> SaFoxUtil.vagueMatch(pattern, element));
+        };
+    }
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {

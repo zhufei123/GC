@@ -142,6 +142,31 @@ GC/
 └── README.md
 ```
 
+## 六、后端启动说明(backend/)
+
+**模块**:`recycle-common`(实体/Mapper/统一响应/Sa-Token/配置) → `recycle-app-api`(/app-api C端+B端) → `recycle-admin-api`(/admin-api + 唯一启动类 `RecycleApplication`)。
+
+**前置**:JDK 21、Maven 3.8+;本机 MySQL(127.0.0.1:3306,库 `recycle`,账号 `recycle`/`recycle@Dev123`)与 Redis(127.0.0.1:6379 无密码)已就绪;首次需导入 SQL:
+
+```bash
+mysql -h127.0.0.1 -urecycle -p'recycle@Dev123' recycle < backend/sql/01-schema.sql
+mysql -h127.0.0.1 -urecycle -p'recycle@Dev123' recycle < backend/sql/02-seed.sql
+```
+
+**构建与启动**(默认 profile=local,连接配置在 `recycle-admin-api/src/main/resources/application-local.yml`):
+
+```bash
+cd backend
+mvn -q -DskipTests package
+java -jar recycle-admin-api/target/backend.jar
+```
+
+- 健康检查:`http://localhost:8080/actuator/health`
+- 接口文档:`http://localhost:8080/doc.html`(分组 admin-api / app-api,生产请关闭)
+- 种子账号:后台 `admin` / `Admin@123`;C端 `13800000001`、B端 `13800000002`(短信验证码 mock 固定 `123456`)
+- 鉴权:请求头 `Authorization: {token}`(无 Bearer);响应 `{code,msg,data,ts}`,`code=0` 成功,未登录 `40100`
+- Docker:`backend/Dockerfile`(eclipse-temurin:21-jre-jammy,jar 复制为 /app/app.jar)
+
 ## 风险提示
 
 - 个人主体无法上线经营类小程序,营业执照是关键路径,建议本周启动办理

@@ -7,10 +7,10 @@ import java.math.BigDecimal;
 @Data
 public class DashboardSummaryVO {
 
-    private Long todayOrderCount;
+    private long todayOrderCount;
     private BigDecimal todayWeightKg;
     private BigDecimal todayAmount;
-    private Long totalUserCount;
-    private Long totalStoreCount;
-    private Long pendingApplyCount;
+    private long totalUserCount;
+    private long totalStoreCount;
+    private long pendingApplyCount;
 }
