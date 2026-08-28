@@ -3,6 +3,7 @@ package com.recycle.app.controller.user;
 import com.recycle.app.dto.AddressDTO;
 import com.recycle.app.service.AppUserService;
 import com.recycle.app.support.CurrentUser;
+import com.recycle.app.vo.FavoriteStationVO;
 import com.recycle.app.vo.UserMeVO;
 import com.recycle.common.core.R;
 import com.recycle.common.entity.member.UserAddress;
@@ -66,5 +67,31 @@ public class AppUserController {
     public R<Void> setDefault(@PathVariable Long id) {
         userService.setDefault(CurrentUser.id(), id);
         return R.ok();
+    }
+
+    @Operation(summary = "是否已收藏该回收站")
+    @GetMapping("/favorite/station/{id}")
+    public R<Boolean> isFavorite(@PathVariable Long id) {
+        return R.ok(userService.isFavorite(CurrentUser.id(), id));
+    }
+
+    @Operation(summary = "收藏回收站（幂等）")
+    @PostMapping("/favorite/station/{id}")
+    public R<Void> addFavorite(@PathVariable Long id) {
+        userService.addFavorite(CurrentUser.id(), id);
+        return R.ok();
+    }
+
+    @Operation(summary = "取消收藏回收站")
+    @DeleteMapping("/favorite/station/{id}")
+    public R<Void> removeFavorite(@PathVariable Long id) {
+        userService.removeFavorite(CurrentUser.id(), id);
+        return R.ok();
+    }
+
+    @Operation(summary = "我的收藏回收站列表")
+    @GetMapping("/favorite/stations")
+    public R<List<FavoriteStationVO>> listFavorites() {
+        return R.ok(userService.listFavorites(CurrentUser.id()));
     }
 }

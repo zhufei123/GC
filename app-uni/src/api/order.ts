@@ -95,3 +95,21 @@ export interface TimeslotVO {
 export function getTimeslots() {
   return get<string[] | TimeslotVO[]>("/app-api/timeslots", undefined, { silent: true });
 }
+
+/* ---------- 订单评价（仅 COMPLETED，一单一评） ---------- */
+
+export interface OrderReviewVO {
+  orderId?: string;
+  rating: number;
+  comment?: string;
+  createTime?: string;
+}
+
+export function submitOrderReview(id: string, rating: number, comment?: string) {
+  return post<void>(`/app-api/order/${id}/review`, { rating, comment }, { loading: true });
+}
+
+/** 未评价返回 null */
+export function getOrderReview(id: string) {
+  return get<OrderReviewVO | null>(`/app-api/order/${id}/review`, undefined, { silent: true });
+}

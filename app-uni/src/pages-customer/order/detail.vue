@@ -79,6 +79,39 @@
         <view class="card__text">{{ order.cancelReason }}</view>
       </view>
 
+      <!-- 订单评价：完成后可评，一单一评 -->
+      <view v-if="order.status === 'COMPLETED'" class="card">
+        <view class="card__title">服务评价</view>
+
+        <template v-if="review">
+          <view class="review__done">
+            <wd-rate :model-value="review.rating" readonly size="18px" active-color="#ff8f1f" />
+            <text class="review__done-score">{{ review.rating }}.0 分</text>
+          </view>
+          <view v-if="review.comment" class="review__comment">{{ review.comment }}</view>
+          <view v-if="review.createTime" class="review__time">评价于 {{ review.createTime }}</view>
+        </template>
+
+        <template v-else-if="reviewLoaded">
+          <view class="review__rate-row">
+            <wd-rate v-model="ratingInput" size="22px" active-color="#ff8f1f" />
+            <text class="review__rate-text">{{ RATING_TEXTS[ratingInput] || "点击星星评分" }}</text>
+          </view>
+          <wd-textarea
+            v-model="commentInput"
+            placeholder="说说本次回收体验吧（选填）"
+            :maxlength="500"
+            show-word-limit
+            custom-class="review__textarea"
+          />
+          <wd-button type="primary" block custom-class="review__submit" @click="onSubmitReview">
+            去评价
+          </wd-button>
+        </template>
+
+        <view v-else class="review__loading"><wd-loading color="#07c160" /></view>
+      </view>
+
       <wd-button
         v-if="order.status === 'PENDING' || order.status === 'ACCEPTED'"
         plain
@@ -96,12 +129,25 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
-import { getOrderDetail, cancelOrder } from "@/api/order";
-import type { OrderVO } from "@/api/order";
+import { getOrderDetail, cancelOrder, getOrderReview, submitOrderReview } from "@/api/order";
+import type { OrderVO, OrderReviewVO } from "@/api/order";
 import { statusText } from "@/utils/order-status";
 
+const RATING_TEXTS: Record<number, string> = {
+  1: "很不满意",
+  2: "不满意",
+  3: "一般",
+  4: "满意",
+  5: "非常满意",
+};
+
 const order = ref<OrderVO | null>(null);
+const review = ref<OrderReviewVO | null>(null);
+const reviewLoaded = ref(false);
+const ratingInput = ref(5);
+const commentInput = ref("");
 let orderId = "";
+let submittingReview = false;
 
 interface DetailRow {
   skuName: string;
@@ -182,8 +228,39 @@ const statusDesc = computed(() => {
 async function load() {
   try {
     order.value = await getOrderDetail(orderId);
+    if (order.value?.status === "COMPLETED") {
+      loadReview();
+    }
   } catch (e) {
     /* 错误提示已由 request 统一处理 */
+  }
+}
+
+async function loadReview() {
+  try {
+    review.value = (await getOrderReview(orderId)) || null;
+  } catch (e) {
+    review.value = null;
+  } finally {
+    reviewLoaded.value = true;
+  }
+}
+
+async function onSubmitReview() {
+  if (submittingReview) return;
+  if (!ratingInput.value || ratingInput.value < 1) {
+    uni.showToast({ title: "请先选择评分", icon: "none" });
+    return;
+  }
+  submittingReview = true;
+  try {
+    await submitOrderReview(orderId, ratingInput.value, commentInput.value.trim() || undefined);
+    uni.showToast({ title: "感谢您的评价", icon: "success" });
+    loadReview();
+  } catch (e) {
+    /* 错误提示已由 request 统一处理 */
+  } finally {
+    submittingReview = false;
   }
 }
 
@@ -343,5 +420,62 @@ onLoad((options) => {
     font-size: 34rpx;
     font-weight: 700;
   }
+}
+
+.review {
+  &__done {
+    display: flex;
+    align-items: center;
+    gap: 16rpx;
+  }
+
+  &__done-score {
+    color: #ff8f1f;
+    font-size: 28rpx;
+    font-weight: 700;
+  }
+
+  &__comment {
+    margin-top: 16rpx;
+    font-size: 26rpx;
+    color: #4e5969;
+    background: #f7f8fa;
+    border-radius: 16rpx;
+    padding: 20rpx;
+  }
+
+  &__time {
+    margin-top: 12rpx;
+    font-size: 22rpx;
+    color: #c0c4cc;
+  }
+
+  &__rate-row {
+    display: flex;
+    align-items: center;
+    gap: 20rpx;
+    padding: 8rpx 0 20rpx;
+  }
+
+  &__rate-text {
+    font-size: 26rpx;
+    color: #86909c;
+  }
+
+  &__loading {
+    display: flex;
+    justify-content: center;
+    padding: 24rpx 0;
+  }
+}
+
+:deep(.review__textarea) {
+  background: #f7f8fa;
+  border-radius: 16rpx;
+}
+
+:deep(.review__submit) {
+  margin-top: 24rpx;
+  border-radius: 44rpx !important;
 }
 </style>

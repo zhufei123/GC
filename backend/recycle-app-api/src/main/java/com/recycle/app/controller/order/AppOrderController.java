@@ -2,8 +2,10 @@ package com.recycle.app.controller.order;
 
 import com.recycle.app.dto.OrderCancelDTO;
 import com.recycle.app.dto.OrderCreateDTO;
+import com.recycle.app.dto.OrderReviewDTO;
 import com.recycle.app.service.AppOrderService;
 import com.recycle.app.support.CurrentUser;
+import com.recycle.app.vo.OrderReviewVO;
 import com.recycle.app.vo.OrderVO;
 import com.recycle.common.core.PageQuery;
 import com.recycle.common.core.PageResult;
@@ -54,5 +56,18 @@ public class AppOrderController {
     public R<Void> cancel(@PathVariable Long id, @Valid @RequestBody OrderCancelDTO dto) {
         orderService.cancel(CurrentUser.id(), id, dto);
         return R.ok();
+    }
+
+    @Operation(summary = "评价订单（仅 COMPLETED，一单一评）")
+    @PostMapping("/{id}/review")
+    public R<Void> review(@PathVariable Long id, @Valid @RequestBody OrderReviewDTO dto) {
+        orderService.review(CurrentUser.id(), id, dto);
+        return R.ok();
+    }
+
+    @Operation(summary = "查看我的订单评价（未评价返回 null）")
+    @GetMapping("/{id}/review")
+    public R<OrderReviewVO> getReview(@PathVariable Long id) {
+        return R.ok(orderService.getReview(CurrentUser.id(), id));
     }
 }

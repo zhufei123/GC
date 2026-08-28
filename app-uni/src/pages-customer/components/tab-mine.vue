@@ -21,6 +21,24 @@
           </view>
           <wd-icon name="arrow-right" size="30rpx" color="#c0c4cc" />
         </view>
+        <view class="menu-item" @tap="goFavorites">
+          <view class="menu-item__left">
+            <view class="menu-item__icon" style="background: #fdeaf1">
+              <wd-icon name="heart-filled" size="36rpx" color="#f0508a" />
+            </view>
+            <text>我的收藏</text>
+          </view>
+          <wd-icon name="arrow-right" size="30rpx" color="#c0c4cc" />
+        </view>
+        <view class="menu-item" @tap="goHelp">
+          <view class="menu-item__left">
+            <view class="menu-item__icon" style="background: #e0f7fa">
+              <wd-icon name="help-circle" size="36rpx" color="#00b4c5" />
+            </view>
+            <text>帮助中心</text>
+          </view>
+          <wd-icon name="arrow-right" size="30rpx" color="#c0c4cc" />
+        </view>
         <view class="menu-item" @tap="goBoss">
           <view class="menu-item__left">
             <view class="menu-item__icon" style="background: #fff3e5">
@@ -75,6 +93,14 @@ function refresh() {
 
 function goAddress() {
   uni.navigateTo({ url: "/pages-customer/address/list" });
+}
+
+function goFavorites() {
+  uni.navigateTo({ url: "/pages-customer/store/favorites" });
+}
+
+function goHelp() {
+  uni.navigateTo({ url: "/pages-customer/help/index" });
 }
 
 function goBoss() {
