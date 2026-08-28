@@ -1,16 +1,44 @@
 {
-	"pages": [ //pages数组中第一项表示应用启动页，参考：https://uniapp.dcloud.io/collocation/pages
-		{
-			"path": "pages/index/index",
-			"style": {
-				"navigationBarTitleText": "uni-app"
-			}
-		}
-	],
-	"globalStyle": {
-		"navigationBarTextStyle": "black",
-		"navigationBarTitleText": "uni-app",
-		"navigationBarBackgroundColor": "#F8F8F8",
-		"backgroundColor": "#F8F8F8"
-	}
+  "pages": [
+    { "path": "pages/launch/index", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/login/index", "style": { "navigationBarTitleText": "登录", "navigationStyle": "custom" } }
+  ],
+  "subPackages": [
+    {
+      "root": "pages-customer",
+      "pages": [
+        { "path": "index", "style": { "navigationStyle": "custom" } },
+        { "path": "order/create", "style": { "navigationBarTitleText": "预约上门回收" } },
+        { "path": "order/detail", "style": { "navigationBarTitleText": "订单详情" } },
+        { "path": "address/list", "style": { "navigationBarTitleText": "地址管理" } },
+        { "path": "address/edit", "style": { "navigationBarTitleText": "编辑地址" } }
+      ]
+    },
+    {
+      "root": "pages-recycler",
+      "pages": [
+        { "path": "index", "style": { "navigationStyle": "custom" } },
+        { "path": "order/handle", "style": { "navigationBarTitleText": "称重录入" } },
+        { "path": "order/detail", "style": { "navigationBarTitleText": "订单详情" } },
+        { "path": "apply/index", "style": { "navigationBarTitleText": "入驻申请" } },
+        { "path": "apply/result", "style": { "navigationBarTitleText": "审核状态" } }
+      ]
+    }
+  ],
+  "preloadRule": {
+    "pages/login/index": { "network": "all", "packages": ["pages-customer"] }
+  },
+  "easycom": {
+    "autoscan": true,
+    "custom": {
+      "^wd-(.*)": "wot-design-uni/components/wd-$1/wd-$1.vue",
+      "^app-(.*)": "@/components/app-$1/app-$1.vue"
+    }
+  },
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "绿色回收",
+    "navigationBarBackgroundColor": "#ffffff",
+    "backgroundColor": "#f5f6f8"
+  }
 }

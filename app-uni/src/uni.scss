@@ -14,8 +14,16 @@
 
 /* 颜色变量 */
 
+/* 项目主题色(绿色回收) */
+$theme-color: #07c160;
+$theme-color-light: #e8f9ef;
+$theme-gradient: linear-gradient(135deg, #07c160 0%, #10d576 100%);
+$text-main: #1f2329;
+$text-sub: #86909c;
+$page-bg: #f5f6f8;
+
 /* 行为相关颜色 */
-$uni-color-primary: #007aff;
+$uni-color-primary: #07c160;
 $uni-color-success: #4cd964;
 $uni-color-warning: #f0ad4e;
 $uni-color-error: #dd524d;
