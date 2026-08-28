@@ -42,6 +42,19 @@
         </view>
       </view>
 
+      <view class="menu-card" @tap="goPrice">
+        <view class="menu-card__left">
+          <view class="menu-card__icon">
+            <wd-icon name="money-circle" size="36rpx" color="#07c160" />
+          </view>
+          <text class="menu-card__title">我的报价</text>
+        </view>
+        <view class="menu-card__right">
+          <text class="menu-card__desc">发布本站回收价</text>
+          <wd-icon name="arrow-right" size="28rpx" color="#c0c4cc" />
+        </view>
+      </view>
+
       <wd-button plain block custom-class="bmine__logout" @click="onLogout">退出登录</wd-button>
     </view>
   </view>
@@ -78,6 +91,10 @@ async function onToggleBusiness({ value }: { value: boolean }) {
   } catch (e) {
     businessOn.value = prev;
   }
+}
+
+function goPrice() {
+  uni.navigateTo({ url: "/pages-recycler/price/index" });
 }
 
 function onLogout() {
@@ -154,6 +171,48 @@ defineExpose({ refresh });
     font-size: 30rpx;
     font-weight: 700;
     margin-bottom: 12rpx;
+  }
+}
+
+.menu-card {
+  margin-top: 24rpx;
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 28rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  &__left {
+    display: flex;
+    align-items: center;
+    gap: 20rpx;
+  }
+
+  &__icon {
+    width: 72rpx;
+    height: 72rpx;
+    border-radius: 20rpx;
+    background: $theme-color-light;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  &__title {
+    font-size: 29rpx;
+    font-weight: 600;
+  }
+
+  &__right {
+    display: flex;
+    align-items: center;
+    gap: 8rpx;
+  }
+
+  &__desc {
+    font-size: 24rpx;
+    color: #86909c;
   }
 }
 

@@ -75,6 +75,39 @@ export function getBossStore() {
   return get("/app-api/boss/store", undefined, { silent: true });
 }
 
+/** 本站报价条目 */
+export interface StationPriceItem {
+  skuId: string;
+  skuName: string;
+  unit?: string;
+  categoryName?: string;
+  /** 平台指导价，仅供参考 */
+  guidePrice?: string;
+  /** 本站发布价 */
+  price?: string;
+  /** 1 报价中 / 0 停报 */
+  status?: number;
+}
+
+export interface StationPriceSaveItem {
+  skuId: string;
+  price: string;
+  status: number;
+}
+
+export function getStationPrices() {
+  return get<{ list: StationPriceItem[] }>("/app-api/boss/prices", undefined, { silent: true });
+}
+
+export function updateStationPrices(items: StationPriceSaveItem[]) {
+  return put("/app-api/boss/prices", { items }, { loading: true });
+}
+
+/** 报价查询接口未就绪时的首次发布(见 pages-recycler/price 兜底逻辑) */
+export function createStationPrices(items: StationPriceSaveItem[]) {
+  return post("/app-api/boss/prices", { items }, { loading: true });
+}
+
 export interface StoreApplyData {
   storeName: string;
   contactName: string;

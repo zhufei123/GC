@@ -8,10 +8,13 @@
       "root": "pages-customer",
       "pages": [
         { "path": "index", "style": { "navigationStyle": "custom" } },
-        { "path": "order/create", "style": { "navigationBarTitleText": "预约上门回收" } },
+        { "path": "order/create", "style": { "navigationBarTitleText": "预约回收" } },
         { "path": "order/detail", "style": { "navigationBarTitleText": "订单详情" } },
         { "path": "address/list", "style": { "navigationBarTitleText": "地址管理" } },
-        { "path": "address/edit", "style": { "navigationBarTitleText": "编辑地址" } }
+        { "path": "address/edit", "style": { "navigationBarTitleText": "编辑地址" } },
+        { "path": "store/nearby", "style": { "navigationBarTitleText": "附近回收站" } },
+        { "path": "store/detail", "style": { "navigationBarTitleText": "回收站详情" } },
+        { "path": "store/quotes", "style": { "navigationBarTitleText": "门店比价" } }
       ]
     },
     {
@@ -20,6 +23,7 @@
         { "path": "index", "style": { "navigationStyle": "custom" } },
         { "path": "order/handle", "style": { "navigationBarTitleText": "称重录入" } },
         { "path": "order/detail", "style": { "navigationBarTitleText": "订单详情" } },
+        { "path": "price/index", "style": { "navigationBarTitleText": "本站报价" } },
         { "path": "apply/index", "style": { "navigationBarTitleText": "入驻申请" } },
         { "path": "apply/result", "style": { "navigationBarTitleText": "审核状态" } }
       ]

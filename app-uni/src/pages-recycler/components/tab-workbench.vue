@@ -64,6 +64,18 @@
         </view>
       </view>
 
+      <!-- 我的报价入口 -->
+      <view class="price-entry" @tap="goPrice">
+        <view class="price-entry__icon">
+          <wd-icon name="money-circle" size="44rpx" color="#07c160" />
+        </view>
+        <view class="price-entry__info">
+          <view class="price-entry__title">我的报价</view>
+          <view class="price-entry__desc">发布本站回收价，用户按报价选站</view>
+        </view>
+        <wd-icon name="arrow-right" size="28rpx" color="#c0c4cc" />
+      </view>
+
       <!-- 抢单入口 -->
       <view class="hall-banner" @tap="$emit('switch-tab', 1)">
         <view>
@@ -107,6 +119,10 @@ async function refresh() {
   } catch (e) {
     /* 保持现有数据 */
   }
+}
+
+function goPrice() {
+  uni.navigateTo({ url: "/pages-recycler/price/index" });
 }
 
 async function onToggleBusiness({ value }: { value: boolean }) {
@@ -251,6 +267,41 @@ defineExpose({ refresh });
   &__desc {
     margin-top: 6rpx;
     font-size: 22rpx;
+    color: #86909c;
+  }
+}
+
+.price-entry {
+  margin-top: 24rpx;
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 28rpx;
+  display: flex;
+  align-items: center;
+  gap: 22rpx;
+
+  &__icon {
+    width: 88rpx;
+    height: 88rpx;
+    border-radius: 24rpx;
+    background: $theme-color-light;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  &__info {
+    flex: 1;
+  }
+
+  &__title {
+    font-size: 30rpx;
+    font-weight: 700;
+  }
+
+  &__desc {
+    margin-top: 8rpx;
+    font-size: 24rpx;
     color: #86909c;
   }
 }

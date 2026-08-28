@@ -32,6 +32,14 @@
           </view>
           <view class="border-card__actions">
             <wd-button
+              v-if="item.status === 'PENDING'"
+              size="small"
+              type="primary"
+              @click.stop="onAccept(item)"
+            >
+              确认接单
+            </wd-button>
+            <wd-button
               v-if="item.status === 'ACCEPTED'"
               size="small"
               type="primary"
@@ -73,11 +81,12 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
-import { getBossOrderPage, startService } from "@/api/boss";
+import { acceptOrder, getBossOrderPage, startService } from "@/api/boss";
 import type { OrderVO } from "@/api/order";
 import { statusText, statusType } from "@/utils/order-status";
 
 const STATUS_TABS = [
+  { label: "待确认", value: "PENDING" },
   { label: "全部", value: "ALL" },
   { label: "已接单", value: "ACCEPTED" },
   { label: "服务中", value: "SERVING" },
@@ -146,6 +155,23 @@ function goDetail(item: OrderVO) {
 
 function goHandle(item: OrderVO) {
   uni.navigateTo({ url: `/pages-recycler/order/handle?id=${item.id}` });
+}
+
+function onAccept(item: OrderVO) {
+  uni.showModal({
+    title: "确认接单",
+    content: `预估金额 ¥${item.estimateAmount || "0.00"}，确定接下这单吗？`,
+    success: async (res) => {
+      if (!res.confirm) return;
+      try {
+        await acceptOrder(item.id);
+        uni.showToast({ title: "接单成功", icon: "success" });
+      } catch (e) {
+        /* 错误提示已由 request 统一处理 */
+      }
+      load(true);
+    },
+  });
 }
 
 async function onStart(item: OrderVO) {
