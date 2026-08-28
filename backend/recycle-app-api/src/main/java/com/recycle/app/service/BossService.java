@@ -198,8 +198,7 @@ public class BossService {
                 .set(RecycleOrder::getActualAmount, total)
                 .set(RecycleOrder::getWeighedAt, LocalDateTime.now())
                 .set(dto.getImages() != null && !dto.getImages().isEmpty(),
-                        RecycleOrder::getPhotosWeigh, JsonUtils.toJson(dto.getImages()))
-                .set(StringUtils.hasText(dto.getRemark()), RecycleOrder::getRemark, dto.getRemark()));
+                        RecycleOrder::getPhotosWeigh, JsonUtils.toJson(dto.getImages())));
         if (rows == 0) {
             throw new BizException(ErrorCode.ORDER_STATUS_ILLEGAL);
         }

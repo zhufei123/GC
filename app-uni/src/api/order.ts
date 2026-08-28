@@ -41,6 +41,7 @@ export interface OrderVO {
 export interface OrderLineItem {
   skuId: string;
   skuName?: string;
+  unit?: string;
   estimateWeight?: string;
   weight?: string;
   price?: string;

@@ -37,7 +37,7 @@
           <view class="weigh-row__info">
             <view class="weigh-row__name">{{ row.skuName }}</view>
             <view class="weigh-row__price">
-              {{ row.price ? `¥${row.price}/kg` : "暂无报价" }}
+              {{ row.price ? `¥${row.price}/${row.unit || "kg"}` : "暂无报价" }}
             </view>
           </view>
           <view class="weigh-row__weight">
@@ -48,7 +48,7 @@
               placeholder="0.00"
               @input="(e: any) => (row.weight = e.detail.value)"
             />
-            <text class="weigh-row__unit">kg</text>
+            <text class="weigh-row__unit">{{ row.unit || "kg" }}</text>
           </view>
           <view class="weigh-row__del" @tap="removeRow(i)">
             <wd-icon name="delete" size="34rpx" color="#c0c4cc" />
@@ -61,15 +61,9 @@
         </view>
       </view>
 
-      <view class="card">
-        <view class="card__title">备注</view>
-        <textarea
-          v-model="remark"
-          class="handle__remark"
-          placeholder="称重备注（选填）"
-          placeholder-class="handle__remark-placeholder"
-          :maxlength="100"
-        />
+      <view v-if="order?.remark" class="card">
+        <view class="card__title">客户备注</view>
+        <view class="card__text">{{ order.remark }}</view>
       </view>
 
       <view class="submit-bar">
@@ -113,7 +107,7 @@
           @tap="addSku(sku)"
         >
           <text>{{ sku.name }}</text>
-          <text class="sku-picker__price">{{ sku.price ? `¥${sku.price}/kg` : "暂无报价" }}</text>
+          <text class="sku-picker__price">{{ sku.price ? `¥${sku.price}/${sku.unit || "kg"}` : "暂无报价" }}</text>
         </view>
         <view v-if="!availableSkus.length" class="sku-picker__empty">暂无可选品类</view>
       </view>
@@ -124,12 +118,13 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
-import { getWeighInit, getBossOrderDetail, getAvailableSkus, submitWeigh, completeOrder } from "@/api/boss";
+import { getBossOrderDetail, getAvailableSkus, submitWeigh, completeOrder } from "@/api/boss";
 import { orderLineItems, type OrderVO } from "@/api/order";
 
 interface WeighRow {
   skuId: string;
   skuName: string;
+  unit?: string;
   price?: string;
   weight: string;
 }
@@ -137,11 +132,10 @@ interface WeighRow {
 const order = ref<OrderVO | null>(null);
 const step = ref<"weigh" | "complete">("weigh");
 const rows = ref<WeighRow[]>([]);
-const remark = ref("");
 const submitting = ref(false);
 const lockedAmount = ref("0.00");
 const skuPickerVisible = ref(false);
-const availableSkus = ref<Array<{ id: string; name: string; price?: string }>>([]);
+const availableSkus = ref<Array<{ id: string; name: string; unit?: string; price?: string }>>([]);
 let orderId = "";
 
 const weighTotal = computed(() => {
@@ -157,16 +151,9 @@ const weighTotal = computed(() => {
 async function load() {
   let data: OrderVO | null = null;
   try {
-    data = await getWeighInit(orderId);
+    data = await getBossOrderDetail(orderId);
   } catch (e) {
-    /* weigh-init 不可用时降级订单详情 */
-  }
-  if (!data) {
-    try {
-      data = await getBossOrderDetail(orderId);
-    } catch (e) {
-      return;
-    }
+    return;
   }
   order.value = data;
   if (data.status === "WEIGHED") {
@@ -177,6 +164,7 @@ async function load() {
   rows.value = orderLineItems(data).map((it) => ({
     skuId: it.skuId,
     skuName: it.skuName || it.skuId,
+    unit: it.unit,
     price: it.price,
     weight: it.weight || it.estimateWeight || "",
   }));
@@ -193,9 +181,9 @@ async function openSkuPicker() {
   skuPickerVisible.value = true;
 }
 
-function addSku(sku: { id: string; name: string; price?: string }) {
+function addSku(sku: { id: string; name: string; unit?: string; price?: string }) {
   if (!rows.value.some((r) => r.skuId === sku.id)) {
-    rows.value.push({ skuId: sku.id, skuName: sku.name, price: sku.price, weight: "" });
+    rows.value.push({ skuId: sku.id, skuName: sku.name, unit: sku.unit, price: sku.price, weight: "" });
   }
   skuPickerVisible.value = false;
 }
@@ -214,7 +202,7 @@ async function doWeigh() {
   }
   submitting.value = true;
   try {
-    const res: any = await submitWeigh(orderId, { items, images: [], remark: remark.value });
+    const res: any = await submitWeigh(orderId, { items, images: [] });
     lockedAmount.value = res?.actualAmount || res?.totalAmount || weighTotal.value;
     // 以服务端锁定金额为准
     try {
@@ -256,20 +244,6 @@ onLoad((options) => {
 <style lang="scss" scoped>
 .handle {
   padding: 24rpx 32rpx 200rpx;
-
-  &__remark {
-    width: 100%;
-    height: 120rpx;
-    background: #f7f8fa;
-    border-radius: 16rpx;
-    padding: 20rpx;
-    box-sizing: border-box;
-    font-size: 26rpx;
-  }
-
-  &__remark-placeholder {
-    color: #c0c4cc;
-  }
 }
 
 .steps {
@@ -326,6 +300,12 @@ onLoad((options) => {
     font-size: 30rpx;
     font-weight: 700;
     margin-bottom: 20rpx;
+  }
+
+  &__text {
+    font-size: 26rpx;
+    color: #4e5969;
+    line-height: 1.6;
   }
 }
 

@@ -47,10 +47,6 @@ export function startService(id: string) {
   return post(`/app-api/boss/order/${id}/start`, {}, { loading: true });
 }
 
-export function getWeighInit(id: string) {
-  return get<OrderVO>(`/app-api/boss/order/${id}`, undefined, { silent: true });
-}
-
 export function getAvailableSkus() {
   return get<Array<{ id: string; name: string; unit?: string; price?: string }>>(
     "/app-api/recycle/sku/list",
