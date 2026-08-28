@@ -51,18 +51,8 @@ const form = reactive({
 
 const rules: FormRules = {
   title: [{ required: true, message: '请输入菜单标题', trigger: 'blur' }],
-  name: [
-    {
-      validator: (_rule, value: string, callback) => {
-        if (form.type !== 'BUTTON' && !value) {
-          callback(new Error('目录/菜单必须填写路由 name'))
-        } else {
-          callback()
-        }
-      },
-      trigger: 'blur',
-    },
-  ],
+  // 后端 sys_menu.name NOT NULL,按钮也必须有唯一标识
+  name: [{ required: true, message: '请输入唯一标识 name', trigger: 'blur' }],
   path: [
     {
       validator: (_rule, value: string, callback) => {
@@ -126,19 +116,20 @@ async function submitForm(): Promise<void> {
       parentId: form.parentId,
       type: form.type,
       title: form.title,
-      name: form.name || undefined,
+      name: form.name,
       path: form.type === 'BUTTON' ? undefined : form.path,
       component: form.type === 'MENU' ? form.component : undefined,
       icon: form.icon || undefined,
       perms: form.perms || undefined,
       sort: form.sort,
-      visible: form.visible,
+      // 后端 MenuSaveDTO.visible 为 Integer(1显示/0隐藏)
+      visible: form.visible ? 1 : 0,
     }
     if (editId.value) {
-      await updateMenu(editId.value, { ...payload, name: form.name })
+      await updateMenu(editId.value, payload)
       ElMessage.success('修改成功')
     } else {
-      await createMenu({ ...payload, name: form.name })
+      await createMenu(payload)
       ElMessage.success('新增成功')
     }
     dialogVisible.value = false
@@ -270,17 +261,18 @@ async function handleDelete(row: MenuVO): Promise<void> {
         <el-form-item label="标题" prop="title">
           <el-input v-model.trim="form.title" placeholder="如:商品管理" maxlength="30" />
         </el-form-item>
-        <template v-if="form.type !== 'BUTTON'">
-          <el-form-item label="路由 name" prop="name">
-            <el-input v-model.trim="form.name" placeholder="如:GoodsCategory(唯一)" />
-          </el-form-item>
-          <el-form-item label="路由 path" prop="path">
-            <el-input
-              v-model.trim="form.path"
-              placeholder="一级填 /goods,子级填 category(不带 /)"
-            />
-          </el-form-item>
-        </template>
+        <el-form-item :label="form.type === 'BUTTON' ? '标识 name' : '路由 name'" prop="name">
+          <el-input
+            v-model.trim="form.name"
+            :placeholder="form.type === 'BUTTON' ? '如:CatAdd(唯一)' : '如:GoodsCategory(唯一)'"
+          />
+        </el-form-item>
+        <el-form-item v-if="form.type !== 'BUTTON'" label="路由 path" prop="path">
+          <el-input
+            v-model.trim="form.path"
+            placeholder="一级填 /goods,子级填 category(不带 /)"
+          />
+        </el-form-item>
         <el-form-item v-if="form.type === 'MENU'" label="组件路径" prop="component">
           <el-input v-model.trim="form.component" placeholder="如:goods/category/index" />
         </el-form-item>

@@ -59,6 +59,14 @@ export function cancelOrder(id: string, reason: string) {
   return post(`/app-api/order/${id}/cancel`, { reason });
 }
 
+export interface TimeslotVO {
+  date?: string;
+  dateLabel?: string;
+  periods?: string[];
+  period?: string;
+  value?: string;
+}
+
 export function getTimeslots() {
-  return get<string[]>("/app-api/timeslots", undefined, { silent: true });
+  return get<string[] | TimeslotVO[]>("/app-api/timeslots", undefined, { silent: true });
 }

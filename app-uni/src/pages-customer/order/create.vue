@@ -181,9 +181,16 @@ async function loadData() {
   try {
     const slots = await getTimeslots();
     if (Array.isArray(slots) && slots.length) {
-      periods.value = slots.map((s: any) =>
-        typeof s === "string" ? s : s.period || s.value || String(s)
-      );
+      const first = slots[0] as any;
+      if (typeof first === "string") {
+        periods.value = slots as string[];
+      } else {
+        const match =
+          (slots as any[]).find((s) => s.date === appointDate.value) || first;
+        if (Array.isArray(match?.periods) && match.periods.length) {
+          periods.value = match.periods;
+        }
+      }
     }
   } catch (e) {
     /* 使用默认时段 */
@@ -191,7 +198,7 @@ async function loadData() {
   if (!address.value) {
     try {
       const list = (await getAddressList()) || [];
-      address.value = list.find((a) => a.isDefault) || list[0] || null;
+      address.value = list.find((a) => a.isDefault === true || Number(a.isDefault) === 1) || list[0] || null;
     } catch (e) {
       /* 未选地址提示用户手动选择 */
     }

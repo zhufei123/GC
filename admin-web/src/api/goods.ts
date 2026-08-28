@@ -55,9 +55,11 @@ export interface SkuVO {
   name: string
   image?: string
   unit: string
+  description?: string
   price?: string
   sort: number
   status: number
+  createTime?: string
   createdAt?: string
   updatedAt?: string
 }
@@ -67,6 +69,8 @@ export interface SkuForm {
   name: string
   image?: string
   unit: string
+  description?: string
+  /** 仅新增时生效(初始价);编辑改价走价格管理 */
   price?: string
   sort: number
   status: number
@@ -108,18 +112,16 @@ export interface PriceForm {
   reason?: string
 }
 
+/** 后端返回 SkuPriceLog 实体:oldPrice/newPrice/effectiveAt/reason/operatorId/createTime */
 export interface PriceLogVO {
   id: string
   skuId?: string
-  skuName?: string
   oldPrice?: string
   newPrice?: string
-  price?: string
   effectiveAt?: string
   reason?: string
-  operator?: string
-  operatorName?: string
-  createdAt?: string
+  operatorId?: string
+  createTime?: string
 }
 
 export function updateSkuPrice(id: string, data: PriceForm) {

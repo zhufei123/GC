@@ -59,4 +59,12 @@ public class OrderVO {
 
     /** 实收明细 */
     private List<OrderItemVO> actualItems;
+
+    /** 兼容小程序称重页 items */
+    public List<OrderItemVO> getItems() {
+        if (actualItems != null && !actualItems.isEmpty()) {
+            return actualItems;
+        }
+        return estimateItems;
+    }
 }

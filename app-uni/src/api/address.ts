@@ -11,7 +11,7 @@ export interface AddressItem {
   detail: string;
   longitude?: number;
   latitude?: number;
-  isDefault?: boolean;
+  isDefault?: boolean | number;
 }
 
 export function getAddressList() {

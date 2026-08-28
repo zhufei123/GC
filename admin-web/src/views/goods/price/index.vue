@@ -244,7 +244,7 @@ async function openLogDrawer(row: SkuVO): Promise<void> {
         <el-table-column label="操作人 / 时间" min-width="150">
           <template #default="{ row }">
             <div>{{ row.operatorName || row.operator || '-' }}</div>
-            <div class="log-time">{{ row.effectiveAt || row.createdAt || '-' }}</div>
+            <div class="log-time">{{ row.effectiveAt || row.createdAt || row.createTime || '-' }}</div>
           </template>
         </el-table-column>
         <template #empty>

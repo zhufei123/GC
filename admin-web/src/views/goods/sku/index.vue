@@ -78,6 +78,7 @@ const form = reactive({
   name: '',
   image: '',
   unit: 'kg',
+  description: '',
   price: '',
   sort: 0,
   status: 1,
@@ -102,7 +103,8 @@ function openDialog(row?: SkuVO): void {
   form.name = row?.name ?? ''
   form.image = row?.image ?? ''
   form.unit = row?.unit ?? 'kg'
-  form.price = row?.price ?? ''
+  form.description = row?.description ?? ''
+  form.price = ''
   form.sort = row?.sort ?? 0
   form.status = row?.status ?? 1
   dialogVisible.value = true
@@ -115,10 +117,11 @@ async function submitForm(): Promise<void> {
   submitting.value = true
   try {
     if (editId.value) {
-      await updateSku(editId.value, { ...form })
+      // 编辑不传 price:后端 update 不处理价格,改价走价格管理页
+      await updateSku(editId.value, { ...form, price: undefined })
       ElMessage.success('修改成功')
     } else {
-      await createSku({ ...form })
+      await createSku({ ...form, price: form.price || undefined })
       ElMessage.success('新增成功')
     }
     dialogVisible.value = false
@@ -293,8 +296,20 @@ async function handleStatusChange(row: SkuVO): Promise<void> {
         <el-form-item label="单位" prop="unit">
           <el-input v-model.trim="form.unit" placeholder="kg" style="width: 120px" />
         </el-form-item>
-        <el-form-item label="初始价" prop="price">
+        <el-form-item label="描述">
+          <el-input
+            v-model.trim="form.description"
+            type="textarea"
+            :rows="2"
+            maxlength="200"
+            placeholder="如:干净无胶带的黄板纸"
+          />
+        </el-form-item>
+        <el-form-item v-if="!editId" label="初始价" prop="price">
           <el-input v-model.trim="form.price" placeholder="如 0.85(元/单位)" style="width: 200px" />
+        </el-form-item>
+        <el-form-item v-else label="当前价">
+          <span class="price-tip">改价请前往「价格管理」页,保留调价日志</span>
         </el-form-item>
         <el-form-item label="排序">
           <el-input-number v-model="form.sort" :min="0" :max="9999" />
@@ -318,5 +333,10 @@ async function handleStatusChange(row: SkuVO): Promise<void> {
 .price-text {
   color: #e6a23c;
   font-weight: 600;
+}
+
+.price-tip {
+  font-size: 12px;
+  color: #909399;
 }
 </style>

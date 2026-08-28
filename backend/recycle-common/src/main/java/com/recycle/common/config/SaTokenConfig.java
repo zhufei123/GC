@@ -48,6 +48,7 @@ public class SaTokenConfig implements WebMvcConfigurer {
                     SaRouter.match("/app-api/**")
                             .notMatch("/app-api/auth/**",
                                     "/app-api/home",
+                                    "/app-api/timeslots",
                                     "/app-api/recycle/**",
                                     "/app-api/store/nearby",
                                     "/app-api/notices/**",

@@ -13,4 +13,8 @@ public class OrderItemVO {
     private BigDecimal weight;
     private BigDecimal price;
     private BigDecimal amount;
+
+    public BigDecimal getEstimateWeight() {
+        return weight;
+    }
 }

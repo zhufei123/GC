@@ -81,9 +81,12 @@ public class BossService {
                 .stream().map(RecycleOrder::getActualAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         vo.setTodayAmount(todayAmount);
+        vo.setPendingCount(orderMapper.selectCount(new LambdaQueryWrapper<RecycleOrder>()
+                .eq(RecycleOrder::getStationId, station.getId())
+                .eq(RecycleOrder::getStatus, "ACCEPTED")));
         vo.setServingCount(orderMapper.selectCount(new LambdaQueryWrapper<RecycleOrder>()
                 .eq(RecycleOrder::getStationId, station.getId())
-                .in(RecycleOrder::getStatus, List.of("ACCEPTED", "SERVING", "WEIGHED"))));
+                .eq(RecycleOrder::getStatus, "SERVING")));
         return vo;
     }
 

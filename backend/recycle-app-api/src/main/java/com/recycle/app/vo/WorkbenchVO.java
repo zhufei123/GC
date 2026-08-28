@@ -16,4 +16,14 @@ public class WorkbenchVO {
     private long todayCompletedCount;
     private BigDecimal todayAmount;
     private long servingCount;
+    /** 待上门（已接单未开始服务） */
+    private long pendingCount;
+
+    public long getPoolCount() {
+        return pendingPoolCount;
+    }
+
+    public long getTodayOrderCount() {
+        return todayAcceptedCount;
+    }
 }

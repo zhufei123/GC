@@ -47,7 +47,6 @@ const form = reactive({
   name: '',
   code: '',
   remark: '',
-  status: 1,
 })
 
 const rules: FormRules = {
@@ -60,7 +59,6 @@ function openDialog(row?: RoleVO): void {
   form.name = row?.name ?? ''
   form.code = row?.code ?? ''
   form.remark = row?.remark ?? ''
-  form.status = row?.status ?? 1
   dialogVisible.value = true
 }
 
@@ -188,13 +186,6 @@ const MENU_TYPE_TAG: Record<string, string> = {
         <el-table-column label="备注" min-width="180" show-overflow-tooltip>
           <template #default="{ row }">{{ row.remark || '-' }}</template>
         </el-table-column>
-        <el-table-column label="状态" width="90" align="center">
-          <template #default="{ row }">
-            <el-tag :type="row.status === 0 ? 'danger' : 'success'" size="small">
-              {{ row.status === 0 ? '停用' : '启用' }}
-            </el-tag>
-          </template>
-        </el-table-column>
         <el-table-column prop="createdAt" label="创建时间" width="170">
           <template #default="{ row }">{{ row.createdAt || row.createTime || '-' }}</template>
         </el-table-column>
@@ -230,12 +221,6 @@ const MENU_TYPE_TAG: Record<string, string> = {
         </el-form-item>
         <el-form-item label="备注">
           <el-input v-model.trim="form.remark" type="textarea" :rows="2" maxlength="200" />
-        </el-form-item>
-        <el-form-item label="状态">
-          <el-radio-group v-model="form.status">
-            <el-radio :value="1">启用</el-radio>
-            <el-radio :value="0">停用</el-radio>
-          </el-radio-group>
         </el-form-item>
       </el-form>
       <template #footer>

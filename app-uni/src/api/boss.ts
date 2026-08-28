@@ -3,14 +3,19 @@ import type { PageResult } from "@/utils/request";
 import type { OrderVO } from "@/api/order";
 
 export interface WorkbenchData {
-  todayOrderCount?: number;
-  todayWeightKg?: string;
-  todayAmount?: string;
-  pendingCount?: number;
-  servingCount?: number;
-  poolCount?: number;
-  businessStatus?: number;
+  storeId?: string;
   storeName?: string;
+  businessStatus?: number;
+  auditStatus?: string;
+  /** 大厅待抢单数(全平台 PENDING) */
+  pendingPoolCount?: number;
+  /** 已接单待上门(ACCEPTED) */
+  acceptedCount?: number;
+  /** 服务中含待称重(SERVING/WEIGHED) */
+  servingCount?: number;
+  todayAcceptedCount?: number;
+  todayCompletedCount?: number;
+  todayAmount?: string;
   [key: string]: any;
 }
 
@@ -19,7 +24,7 @@ export function getWorkbench() {
 }
 
 export function updateBusinessStatus(businessStatus: number) {
-  return put("/app-api/boss/store/business-status", { businessStatus });
+  return put("/app-api/boss/store", { businessStatus });
 }
 
 export function getOrderPool(params?: { pageNum?: number; pageSize?: number }) {
@@ -43,12 +48,12 @@ export function startService(id: string) {
 }
 
 export function getWeighInit(id: string) {
-  return get<OrderVO>(`/app-api/boss/order/${id}/weigh-init`, undefined, { silent: true });
+  return get<OrderVO>(`/app-api/boss/order/${id}`, undefined, { silent: true });
 }
 
 export function getAvailableSkus() {
   return get<Array<{ id: string; name: string; unit?: string; price?: string }>>(
-    "/app-api/boss/skus/available",
+    "/app-api/recycle/sku/list",
     undefined,
     { silent: true }
   );
@@ -88,8 +93,19 @@ export function applyStore(data: StoreApplyData) {
   return post("/app-api/store/apply", data, { loading: true });
 }
 
-export interface ApplyVO extends StoreApplyData {
+/** 后端返回 StationApply 实体：storeImages/categoryIds 为 JSON 字符串 */
+export interface ApplyVO {
   id: string;
+  storeName: string;
+  contactName: string;
+  contactPhone: string;
+  province?: string;
+  city?: string;
+  district?: string;
+  detail: string;
+  licenseImage?: string;
+  storeImages?: string;
+  categoryIds?: string;
   auditStatus: "pending" | "approved" | "rejected";
   auditRemark?: string;
   createTime?: string;

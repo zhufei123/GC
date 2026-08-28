@@ -97,6 +97,10 @@ async function refresh() {
   try {
     const res = await getWorkbench();
     Object.assign(data, res || {});
+    data.poolCount = res?.poolCount ?? res?.pendingPoolCount ?? data.poolCount;
+    data.pendingCount = res?.pendingCount ?? data.pendingCount;
+    data.todayOrderCount = res?.todayOrderCount ?? res?.todayAcceptedCount ?? data.todayOrderCount;
+    data.servingCount = res?.servingCount ?? data.servingCount;
     if (typeof res?.businessStatus !== "undefined") {
       businessOn.value = Number(res.businessStatus) === 1;
     }

@@ -71,17 +71,14 @@ export interface RoleVO {
   name: string
   code?: string
   remark?: string
-  status?: number
-  sort?: number
   createdAt?: string
 }
 
+/** 后端 RoleSaveDTO 仅 code/name/remark(sys_role 无 status 字段) */
 export interface RoleForm {
   name: string
   code: string
   remark?: string
-  status: number
-  sort?: number
 }
 
 /** 文档为 GET /admin-api/system/role,兼容返回数组或分页结构 */
@@ -133,7 +130,8 @@ export interface MenuForm {
   icon?: string
   perms?: string
   sort: number
-  visible: boolean
+  /** 后端 MenuSaveDTO.visible 为 Integer:1 显示 / 0 隐藏 */
+  visible: number
 }
 
 export function getMenuTree() {
