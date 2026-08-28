@@ -99,7 +99,7 @@ async function handleCancel(): Promise<void> {
           <div>
             <div class="order-no">订单号:{{ detail?.orderNo || detail?.id || '-' }}</div>
             <div class="order-sub">
-              下单时间:{{ detail?.createdAt || '-' }}
+              下单时间:{{ detail?.createdAt || detail?.createTime || '-' }}
               <span v-if="detail?.type" class="order-type">
                 {{ ORDER_TYPE_MAP[detail.type] || detail.type }}
               </span>

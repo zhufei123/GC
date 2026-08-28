@@ -3,11 +3,13 @@ package com.recycle.common.entity.store;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.recycle.common.entity.base.BaseEntity;
+import com.recycle.common.util.JsonUtils;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 入驻申请
@@ -39,4 +41,34 @@ public class StationApply extends BaseEntity {
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
     private LocalDateTime auditTime;
+
+    public String getPhone() {
+        return contactPhone;
+    }
+
+    public void setPhone(String phone) {
+        this.contactPhone = phone;
+    }
+
+    /** 兼容管理端 PENDING/pending */
+    public String getStatus() {
+        return auditStatus;
+    }
+
+    public List<String> getImages() {
+        return JsonUtils.toStringList(storeImages);
+    }
+
+    public List<String> getLicenseImages() {
+        if (licenseImage == null || licenseImage.isBlank()) {
+            return List.of();
+        }
+        List<String> parsed = JsonUtils.toStringList(licenseImage);
+        return parsed.isEmpty() ? List.of(licenseImage) : parsed;
+    }
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
+    public LocalDateTime getAuditedAt() {
+        return auditTime;
+    }
 }

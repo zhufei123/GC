@@ -56,8 +56,8 @@ function openDialog(row?: NoticeVO): void {
   editId.value = row?.id ?? ''
   form.title = row?.title ?? ''
   form.content = row?.content ?? ''
-  form.sort = row?.sort ?? 0
-  form.status = row?.status ?? 1
+  form.sort = row?.sort ?? row?.pinned ?? 0
+  form.status = row?.status ?? (row?.publishStatus === 'published' ? 1 : 0)
   dialogVisible.value = true
 }
 
@@ -68,10 +68,16 @@ async function submitForm(): Promise<void> {
   submitting.value = true
   try {
     if (editId.value) {
-      await updateNotice(editId.value, { ...form })
+      await updateNotice(editId.value, {
+        ...form,
+        publishStatus: form.status === 1 ? 'published' : 'offline',
+      })
       ElMessage.success('修改成功')
     } else {
-      await createNotice({ ...form })
+      await createNotice({
+        ...form,
+        publishStatus: form.status === 1 ? 'published' : 'offline',
+      })
       ElMessage.success('新增成功')
     }
     dialogVisible.value = false
@@ -115,13 +121,13 @@ async function handleDelete(row: NoticeVO): Promise<void> {
         </el-table-column>
         <el-table-column label="状态" width="90" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.status === 1 ? 'success' : 'info'" size="small">
-              {{ row.status === 1 ? '发布' : '下线' }}
+            <el-tag :type="row.status === 1 || row.publishStatus === 'published' ? 'success' : 'info'" size="small">
+              {{ row.status === 1 || row.publishStatus === 'published' ? '发布' : '下线' }}
             </el-tag>
           </template>
         </el-table-column>
         <el-table-column label="发布时间" width="170">
-          <template #default="{ row }">{{ row.publishedAt || row.createdAt || '-' }}</template>
+          <template #default="{ row }">{{ row.publishedAt || row.publishTime || row.createdAt || row.createTime || '-' }}</template>
         </el-table-column>
         <el-table-column label="操作" width="140" align="center" fixed="right">
           <template #default="{ row }">

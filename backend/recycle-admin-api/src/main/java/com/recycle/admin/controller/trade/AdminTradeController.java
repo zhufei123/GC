@@ -35,7 +35,15 @@ public class AdminTradeController {
     public R<PageResult<AdminOrderVO>> page(@RequestParam(required = false) String status,
                                             @RequestParam(required = false) String orderNo,
                                             @RequestParam(required = false) Long userId,
+                                            @RequestParam(required = false) String beginDate,
+                                            @RequestParam(required = false) String endDate,
                                             PageQuery query) {
+        if (beginDate != null && (query.getBeginDate() == null || query.getBeginDate().isBlank())) {
+            query.setBeginDate(beginDate);
+        }
+        if (endDate != null && (query.getEndDate() == null || query.getEndDate().isBlank())) {
+            query.setEndDate(endDate);
+        }
         return R.ok(tradeService.page(status, orderNo, userId, query));
     }
 

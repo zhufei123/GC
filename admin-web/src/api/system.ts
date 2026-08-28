@@ -15,6 +15,7 @@ export interface AdminVO {
   roles?: Array<string | { id: string; name?: string }>
   roleNames?: string[]
   createdAt?: string
+  createTime?: string
   lastLoginAt?: string
 }
 
@@ -169,6 +170,10 @@ export interface OpLogVO {
   status?: number
   errorMsg?: string
   createdAt?: string
+  createTime?: string
+  description?: string
+  path?: string
+  resultCode?: number
 }
 
 export function getOplogPage(params: PageQuery) {

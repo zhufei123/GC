@@ -15,6 +15,7 @@ import com.recycle.common.mapper.SysAdminMapper;
 import com.recycle.common.mapper.SysAdminRoleMapper;
 import com.recycle.common.mapper.SysRoleMapper;
 import com.recycle.common.satoken.StpKit;
+import com.recycle.common.util.QueryParams;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -37,9 +38,15 @@ public class SysAdminService {
     private final SysRoleMapper roleMapper;
 
     public PageResult<AdminInfoVO> page(String username, Integer status, PageQuery query) {
+        String keyword = QueryParams.firstText(query.getKeyword(), username);
         Page<SysAdmin> page = adminMapper.selectPage(query.toPage(),
                 new LambdaQueryWrapper<SysAdmin>()
-                        .like(StringUtils.hasText(username), SysAdmin::getUsername, username)
+                        .and(StringUtils.hasText(keyword), w -> w
+                                .like(SysAdmin::getUsername, keyword)
+                                .or()
+                                .like(SysAdmin::getNickname, keyword)
+                                .or()
+                                .like(SysAdmin::getPhone, keyword))
                         .eq(status != null, SysAdmin::getStatus, status)
                         .orderByAsc(SysAdmin::getId));
         List<Long> adminIds = page.getRecords().stream().map(SysAdmin::getId).toList();

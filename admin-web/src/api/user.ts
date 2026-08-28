@@ -11,6 +11,7 @@ export interface MemberUserVO {
   status?: number
   orderCount?: number
   createdAt?: string
+  createTime?: string
   lastLoginAt?: string
 }
 

@@ -21,7 +21,11 @@ export interface StoreApplyVO {
   status?: string | number
   remark?: string
   auditRemark?: string
+  contactPhone?: string
+  auditStatus?: string
+  storeImages?: string | string[]
   createdAt?: string
+  createTime?: string
   auditedAt?: string
 }
 
@@ -56,9 +60,10 @@ export interface StoreVO {
   detail?: string
   longitude?: number
   latitude?: number
-  businessStatus?: string
+  businessStatus?: string | number
   status?: number
   createdAt?: string
+  createTime?: string
 }
 
 export interface StoreForm {

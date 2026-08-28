@@ -128,7 +128,7 @@ async function handleStatusChange(row: MemberUserVO): Promise<void> {
           </template>
         </el-table-column>
         <el-table-column prop="createdAt" label="注册时间" width="170">
-          <template #default="{ row }">{{ row.createdAt || '-' }}</template>
+          <template #default="{ row }">{{ row.createdAt || row.createTime || '-' }}</template>
         </el-table-column>
         <el-table-column label="操作" width="110" align="center" fixed="right">
           <template #default="{ row }">

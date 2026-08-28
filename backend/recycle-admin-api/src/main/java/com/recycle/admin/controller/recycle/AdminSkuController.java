@@ -41,9 +41,13 @@ public class AdminSkuController {
     @SaCheckPermission(type = StpKit.ADMIN_TYPE, value = "recycle:sku:list")
     @GetMapping("/page")
     public R<PageResult<SkuPageVO>> page(@RequestParam(required = false) Long categoryId,
+                                         @RequestParam(required = false) String keyword,
                                          @RequestParam(required = false) String name,
                                          @RequestParam(required = false) Integer status,
                                          PageQuery query) {
+        if (keyword != null && (query.getKeyword() == null || query.getKeyword().isBlank())) {
+            query.setKeyword(keyword);
+        }
         return R.ok(skuService.page(categoryId, name, status, query));
     }
 

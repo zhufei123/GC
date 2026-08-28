@@ -77,6 +77,7 @@ export interface OrderVO {
   timeline?: OrderTimelineVO[]
   logs?: OrderTimelineVO[]
   createdAt?: string
+  createTime?: string
   completedAt?: string
 }
 

@@ -183,7 +183,7 @@ function goDetail(row: OrderVO): void {
           </template>
         </el-table-column>
         <el-table-column prop="createdAt" label="下单时间" width="170">
-          <template #default="{ row }">{{ row.createdAt || '-' }}</template>
+          <template #default="{ row }">{{ row.createdAt || row.createTime || '-' }}</template>
         </el-table-column>
         <el-table-column label="操作" width="140" align="center" fixed="right">
           <template #default="{ row }">

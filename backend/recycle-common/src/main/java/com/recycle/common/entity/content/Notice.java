@@ -21,4 +21,20 @@ public class Notice extends BaseEntity {
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
     private LocalDateTime publishTime;
+
+    /** 管理端表单用 1 发布 / 0 下线，映射 publishStatus */
+    public Integer getStatus() {
+        return "published".equals(publishStatus) ? 1 : 0;
+    }
+
+    public void setStatus(Integer status) {
+        if (status == null) {
+            return;
+        }
+        this.publishStatus = status == 1 ? "published" : "offline";
+    }
+
+    public LocalDateTime getPublishedAt() {
+        return publishTime != null ? publishTime : getCreateTime();
+    }
 }

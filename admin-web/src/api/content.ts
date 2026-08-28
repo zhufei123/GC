@@ -49,8 +49,12 @@ export interface NoticeVO {
   content?: string
   status?: number
   sort?: number
+  pinned?: number
+  publishStatus?: string
   publishedAt?: string
+  publishTime?: string
   createdAt?: string
+  createTime?: string
 }
 
 export interface NoticeForm {
@@ -58,6 +62,7 @@ export interface NoticeForm {
   content: string
   sort: number
   status: number
+  publishStatus?: string
 }
 
 export function getNoticePage(params: PageQuery) {

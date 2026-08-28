@@ -18,6 +18,7 @@ import com.recycle.common.mapper.SkuMapper;
 import com.recycle.common.mapper.SkuPriceLogMapper;
 import com.recycle.common.mapper.SkuPriceMapper;
 import com.recycle.common.support.SkuPriceReader;
+import com.recycle.common.util.QueryParams;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,10 +41,11 @@ public class AdminSkuService {
     private final SkuPriceReader priceReader;
 
     public PageResult<SkuPageVO> page(Long categoryId, String name, Integer status, PageQuery query) {
+        String keyword = QueryParams.firstText(query.getKeyword(), name);
         Page<Sku> page = skuMapper.selectPage(query.toPage(),
                 new LambdaQueryWrapper<Sku>()
                         .eq(categoryId != null, Sku::getCategoryId, categoryId)
-                        .like(StringUtils.hasText(name), Sku::getName, name)
+                        .like(StringUtils.hasText(keyword), Sku::getName, keyword)
                         .eq(status != null, Sku::getStatus, status)
                         .orderByAsc(Sku::getSort)
                         .orderByAsc(Sku::getId));

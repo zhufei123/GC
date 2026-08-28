@@ -8,6 +8,7 @@ import com.recycle.common.core.PageQuery;
 import com.recycle.common.core.PageResult;
 import com.recycle.common.entity.member.User;
 import com.recycle.common.mapper.UserMapper;
+import com.recycle.common.util.QueryParams;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -19,9 +20,13 @@ public class AdminMemberService {
     private final UserMapper userMapper;
 
     public PageResult<UserPageVO> page(String phone, String role, Integer status, PageQuery query) {
+        String keyword = QueryParams.firstText(query.getKeyword(), phone);
         return PageResult.of(userMapper.selectPage(query.toPage(),
                 new LambdaQueryWrapper<User>()
-                        .like(StringUtils.hasText(phone), User::getPhone, phone)
+                        .and(StringUtils.hasText(keyword), w -> w
+                                .like(User::getPhone, keyword)
+                                .or()
+                                .like(User::getNickname, keyword))
                         .eq(StringUtils.hasText(role), User::getRole, role)
                         .eq(status != null, User::getStatus, status)
                         .orderByDesc(User::getId)), this::toVO);

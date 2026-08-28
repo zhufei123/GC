@@ -15,6 +15,7 @@ import com.recycle.common.mapper.OrderItemMapper;
 import com.recycle.common.mapper.RecycleOrderMapper;
 import com.recycle.common.mapper.RecycleStationMapper;
 import com.recycle.common.util.JsonUtils;
+import com.recycle.common.util.QueryParams;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -32,11 +33,16 @@ public class AdminTradeService {
     private final RecycleStationMapper stationMapper;
 
     public PageResult<AdminOrderVO> page(String status, String orderNo, Long userId, PageQuery query) {
+        LocalDateTime begin = QueryParams.startOfDay(query.getBeginDate());
+        LocalDateTime endExclusive = QueryParams.startOfNextDay(query.getEndDate());
+        String no = QueryParams.firstText(orderNo, query.getKeyword());
         Page<RecycleOrder> page = orderMapper.selectPage(query.toPage(),
                 new LambdaQueryWrapper<RecycleOrder>()
                         .eq(StringUtils.hasText(status), RecycleOrder::getStatus, status)
-                        .eq(StringUtils.hasText(orderNo), RecycleOrder::getOrderNo, orderNo)
+                        .like(StringUtils.hasText(no), RecycleOrder::getOrderNo, no)
                         .eq(userId != null, RecycleOrder::getUserId, userId)
+                        .ge(begin != null, RecycleOrder::getCreateTime, begin)
+                        .lt(endExclusive != null, RecycleOrder::getCreateTime, endExclusive)
                         .orderByDesc(RecycleOrder::getCreateTime));
         return PageResult.of(page, o -> toVO(o, false, true));
     }

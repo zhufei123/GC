@@ -35,9 +35,13 @@ public class AdminStoreController {
     @Operation(summary = "门店分页")
     @SaCheckPermission(type = StpKit.ADMIN_TYPE, value = "store:store:list")
     @GetMapping("/page")
-    public R<PageResult<RecycleStation>> page(@RequestParam(required = false) String name,
+    public R<PageResult<RecycleStation>> page(@RequestParam(required = false) String keyword,
+                                              @RequestParam(required = false) String name,
                                               @RequestParam(required = false) Integer status,
                                               PageQuery query) {
+        if (keyword != null && (query.getKeyword() == null || query.getKeyword().isBlank())) {
+            query.setKeyword(keyword);
+        }
         return R.ok(storeService.storePage(name, status, query));
     }
 
@@ -45,8 +49,9 @@ public class AdminStoreController {
     @SaCheckPermission(type = StpKit.ADMIN_TYPE, value = "store:apply:list")
     @GetMapping("/apply/page")
     public R<PageResult<StationApply>> applyPage(@RequestParam(required = false) String auditStatus,
+                                                 @RequestParam(required = false) String status,
                                                  PageQuery query) {
-        return R.ok(storeService.applyPage(auditStatus, query));
+        return R.ok(storeService.applyPage(auditStatus != null ? auditStatus : status, query));
     }
 
     @Operation(summary = "入驻申请详情")

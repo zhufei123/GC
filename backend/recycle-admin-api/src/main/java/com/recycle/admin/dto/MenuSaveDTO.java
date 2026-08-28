@@ -24,4 +24,21 @@ public class MenuSaveDTO {
     private String perms;
     private Integer sort = 0;
     private Integer visible = 1;
+
+    /** 兼容前端 boolean / 0|1 */
+    public void setVisible(Object visible) {
+        if (visible == null) {
+            return;
+        }
+        if (visible instanceof Boolean b) {
+            this.visible = b ? 1 : 0;
+            return;
+        }
+        if (visible instanceof Number n) {
+            this.visible = n.intValue();
+            return;
+        }
+        String raw = String.valueOf(visible);
+        this.visible = "false".equalsIgnoreCase(raw) || "0".equals(raw) ? 0 : 1;
+    }
 }

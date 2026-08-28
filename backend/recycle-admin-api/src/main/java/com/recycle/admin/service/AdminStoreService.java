@@ -12,6 +12,7 @@ import com.recycle.common.entity.store.StationApply;
 import com.recycle.common.mapper.RecycleStationMapper;
 import com.recycle.common.mapper.StationApplyMapper;
 import com.recycle.common.mapper.UserMapper;
+import com.recycle.common.util.QueryParams;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,9 +29,17 @@ public class AdminStoreService {
     private final UserMapper userMapper;
 
     public PageResult<RecycleStation> storePage(String name, Integer status, PageQuery query) {
+        String keyword = QueryParams.firstText(query.getKeyword(), name);
         return PageResult.of(stationMapper.selectPage(query.toPage(),
                 new LambdaQueryWrapper<RecycleStation>()
-                        .like(StringUtils.hasText(name), RecycleStation::getName, name)
+                        .and(StringUtils.hasText(keyword), w -> w
+                                .like(RecycleStation::getName, keyword)
+                                .or()
+                                .like(RecycleStation::getPhone, keyword)
+                                .or()
+                                .like(RecycleStation::getContactName, keyword)
+                                .or()
+                                .like(RecycleStation::getAddress, keyword))
                         .eq(status != null, RecycleStation::getStatus, status)
                         .orderByDesc(RecycleStation::getId)));
     }
@@ -49,9 +58,10 @@ public class AdminStoreService {
     }
 
     public PageResult<StationApply> applyPage(String auditStatus, PageQuery query) {
+        String status = QueryParams.lower(auditStatus);
         return PageResult.of(applyMapper.selectPage(query.toPage(),
                 new LambdaQueryWrapper<StationApply>()
-                        .eq(StringUtils.hasText(auditStatus), StationApply::getAuditStatus, auditStatus)
+                        .eq(StringUtils.hasText(status), StationApply::getAuditStatus, status)
                         .orderByDesc(StationApply::getId)));
     }
 

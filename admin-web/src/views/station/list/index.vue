@@ -51,6 +51,10 @@ function fullAddress(row: StoreVO): string {
   return parts.length ? parts.join('') : '-'
 }
 
+function isStationOpen(status: StoreVO['businessStatus']): boolean {
+  return status === 'OPEN' || status === 1 || status === '1'
+}
+
 async function handleStatusChange(row: StoreVO): Promise<void> {
   const target = row.status === 1 ? 0 : 1
   const action = target === 1 ? '启用' : '停用'
@@ -145,11 +149,11 @@ async function submitForm(): Promise<void> {
         <el-table-column label="营业状态" width="100" align="center">
           <template #default="{ row }">
             <el-tag
-              v-if="row.businessStatus"
+              v-if="row.businessStatus !== undefined && row.businessStatus !== null && row.businessStatus !== ''"
               size="small"
-              :type="row.businessStatus === 'OPEN' ? 'success' : 'info'"
+              :type="isStationOpen(row.businessStatus) ? 'success' : 'info'"
             >
-              {{ row.businessStatus === 'OPEN' ? '营业中' : '休息中' }}
+              {{ isStationOpen(row.businessStatus) ? '营业中' : '休息中' }}
             </el-tag>
             <span v-else>-</span>
           </template>
@@ -162,7 +166,7 @@ async function submitForm(): Promise<void> {
           </template>
         </el-table-column>
         <el-table-column prop="createdAt" label="入驻时间" width="170">
-          <template #default="{ row }">{{ row.createdAt || '-' }}</template>
+          <template #default="{ row }">{{ row.createdAt || row.createTime || '-' }}</template>
         </el-table-column>
         <el-table-column label="操作" width="150" align="center" fixed="right">
           <template #default="{ row }">

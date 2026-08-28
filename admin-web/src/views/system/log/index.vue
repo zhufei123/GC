@@ -131,7 +131,7 @@ function prettyJson(text?: string): string {
           </template>
         </el-table-column>
         <el-table-column prop="createdAt" label="操作时间" width="170">
-          <template #default="{ row }">{{ row.createdAt || '-' }}</template>
+          <template #default="{ row }">{{ row.createdAt || row.createTime || '-' }}</template>
         </el-table-column>
         <el-table-column label="操作" width="80" align="center" fixed="right">
           <template #default="{ row }">
@@ -159,7 +159,7 @@ function prettyJson(text?: string): string {
           <el-descriptions-item label="操作人">
             {{ detailRow.adminName || detailRow.operator || '-' }}
           </el-descriptions-item>
-          <el-descriptions-item label="操作时间">{{ detailRow.createdAt || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="操作时间">{{ detailRow.createdAt || detailRow.createTime || '-' }}</el-descriptions-item>
           <el-descriptions-item label="模块">{{ detailRow.module || '-' }}</el-descriptions-item>
           <el-descriptions-item label="操作">{{ detailRow.title || '-' }}</el-descriptions-item>
           <el-descriptions-item label="请求" :span="2">

@@ -38,9 +38,13 @@ public class SysAdminController {
     @Operation(summary = "管理员分页")
     @SaCheckPermission(type = StpKit.ADMIN_TYPE, value = "system:admin:list")
     @GetMapping("/page")
-    public R<PageResult<AdminInfoVO>> page(@RequestParam(required = false) String username,
+    public R<PageResult<AdminInfoVO>> page(@RequestParam(required = false) String keyword,
+                                           @RequestParam(required = false) String username,
                                            @RequestParam(required = false) Integer status,
                                            PageQuery query) {
+        if (keyword != null && (query.getKeyword() == null || query.getKeyword().isBlank())) {
+            query.setKeyword(keyword);
+        }
         return R.ok(adminService.page(username, status, query));
     }
 

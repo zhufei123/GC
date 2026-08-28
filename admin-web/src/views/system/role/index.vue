@@ -196,7 +196,7 @@ const MENU_TYPE_TAG: Record<string, string> = {
           </template>
         </el-table-column>
         <el-table-column prop="createdAt" label="创建时间" width="170">
-          <template #default="{ row }">{{ row.createdAt || '-' }}</template>
+          <template #default="{ row }">{{ row.createdAt || row.createTime || '-' }}</template>
         </el-table-column>
         <el-table-column label="操作" width="220" align="center" fixed="right">
           <template #default="{ row }">

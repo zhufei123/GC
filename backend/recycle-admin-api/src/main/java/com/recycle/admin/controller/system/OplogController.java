@@ -29,7 +29,19 @@ public class OplogController {
     @GetMapping("/page")
     public R<PageResult<SysLog>> page(@RequestParam(required = false) String module,
                                       @RequestParam(required = false) String type,
+                                      @RequestParam(required = false) String keyword,
+                                      @RequestParam(required = false) String beginDate,
+                                      @RequestParam(required = false) String endDate,
                                       PageQuery query) {
+        if (keyword != null && (query.getKeyword() == null || query.getKeyword().isBlank())) {
+            query.setKeyword(keyword);
+        }
+        if (beginDate != null && (query.getBeginDate() == null || query.getBeginDate().isBlank())) {
+            query.setBeginDate(beginDate);
+        }
+        if (endDate != null && (query.getEndDate() == null || query.getEndDate().isBlank())) {
+            query.setEndDate(endDate);
+        }
         return R.ok(logService.page(module, type, query));
     }
 

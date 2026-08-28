@@ -32,10 +32,14 @@ public class AdminMemberController {
     @Operation(summary = "用户分页（手机号脱敏）")
     @SaCheckPermission(type = StpKit.ADMIN_TYPE, value = "member:user:list")
     @GetMapping("/page")
-    public R<PageResult<UserPageVO>> page(@RequestParam(required = false) String phone,
+    public R<PageResult<UserPageVO>> page(@RequestParam(required = false) String keyword,
+                                          @RequestParam(required = false) String phone,
                                           @RequestParam(required = false) String role,
                                           @RequestParam(required = false) Integer status,
                                           PageQuery query) {
+        if (keyword != null && (query.getKeyword() == null || query.getKeyword().isBlank())) {
+            query.setKeyword(keyword);
+        }
         return R.ok(memberService.page(phone, role, status, query));
     }
 

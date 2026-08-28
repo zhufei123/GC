@@ -9,11 +9,18 @@ type TagType = 'success' | 'warning' | 'info' | 'danger' | 'primary'
 /** 兼容后端字符串 / 数字两种状态枚举 */
 const APPLY_STATUS: Record<string, { label: string; type: TagType }> = {
   PENDING: { label: '待审核', type: 'warning' },
+  pending: { label: '待审核', type: 'warning' },
   APPROVED: { label: '已通过', type: 'success' },
+  approved: { label: '已通过', type: 'success' },
   REJECTED: { label: '已驳回', type: 'danger' },
+  rejected: { label: '已驳回', type: 'danger' },
   '0': { label: '待审核', type: 'warning' },
   '1': { label: '已通过', type: 'success' },
   '2': { label: '已驳回', type: 'danger' },
+}
+
+function applyStatus(row: StoreApplyVO): string | number | undefined {
+  return row.status ?? row.auditStatus
 }
 
 function statusInfo(status?: string | number): { label: string; type: TagType } {
@@ -21,7 +28,8 @@ function statusInfo(status?: string | number): { label: string; type: TagType } 
 }
 
 function isPending(status?: string | number): boolean {
-  return String(status ?? '') === 'PENDING' || String(status ?? '') === '0'
+  const value = String(status ?? '').toLowerCase()
+  return value === 'pending' || value === '0'
 }
 
 const loading = ref(false)
@@ -41,7 +49,7 @@ async function loadData(): Promise<void> {
       pageNum: query.pageNum,
       pageSize: query.pageSize,
     }
-    if (query.status) params.status = query.status
+    if (query.status) params.status = query.status.toLowerCase()
     const data = await getApplyPage(params)
     list.value = data?.list ?? []
     total.value = data?.total ?? 0
@@ -170,25 +178,25 @@ function openDetail(row: StoreApplyVO): void {
           <template #default="{ row }">{{ applicant(row) }}</template>
         </el-table-column>
         <el-table-column label="电话" width="130">
-          <template #default="{ row }">{{ row.phone || '-' }}</template>
+          <template #default="{ row }">{{ row.phone || row.contactPhone || '-' }}</template>
         </el-table-column>
         <el-table-column label="地址" min-width="200" show-overflow-tooltip>
           <template #default="{ row }">{{ fullAddress(row) }}</template>
         </el-table-column>
         <el-table-column label="状态" width="100" align="center">
           <template #default="{ row }">
-            <el-tag :type="statusInfo(row.status).type" size="small">
-              {{ statusInfo(row.status).label }}
+            <el-tag :type="statusInfo(applyStatus(row)).type" size="small">
+              {{ statusInfo(applyStatus(row)).label }}
             </el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="createdAt" label="申请时间" width="170">
-          <template #default="{ row }">{{ row.createdAt || '-' }}</template>
+          <template #default="{ row }">{{ row.createdAt || row.createTime || '-' }}</template>
         </el-table-column>
         <el-table-column label="操作" width="200" align="center" fixed="right">
           <template #default="{ row }">
             <el-button link @click="openDetail(row)">详情</el-button>
-            <template v-if="isPending(row.status)">
+            <template v-if="isPending(applyStatus(row))">
               <el-button
                 v-permission="'store:apply:audit'"
                 link
@@ -269,14 +277,14 @@ function openDetail(row: StoreApplyVO): void {
         <el-descriptions :column="1" border>
           <el-descriptions-item label="门店名称">{{ storeName(detailRow) }}</el-descriptions-item>
           <el-descriptions-item label="申请人">{{ applicant(detailRow) }}</el-descriptions-item>
-          <el-descriptions-item label="电话">{{ detailRow.phone || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="电话">{{ detailRow.phone || detailRow.contactPhone || '-' }}</el-descriptions-item>
           <el-descriptions-item label="地址">{{ fullAddress(detailRow) }}</el-descriptions-item>
           <el-descriptions-item label="状态">
-            <el-tag :type="statusInfo(detailRow.status).type" size="small">
-              {{ statusInfo(detailRow.status).label }}
+            <el-tag :type="statusInfo(applyStatus(detailRow)).type" size="small">
+              {{ statusInfo(applyStatus(detailRow)).label }}
             </el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="申请时间">{{ detailRow.createdAt || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="申请时间">{{ detailRow.createdAt || detailRow.createTime || '-' }}</el-descriptions-item>
           <el-descriptions-item label="审核备注">
             {{ detailRow.auditRemark || detailRow.remark || '-' }}
           </el-descriptions-item>
