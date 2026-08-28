@@ -101,3 +101,12 @@ INSERT INTO user_address (id, user_id, receiver, phone, province, city, district
 
 INSERT INTO recycle_station (id, owner_user_id, name, phone, contact_name, province, city, district, address, longitude, latitude, business_status, status, category_ids) VALUES
 (3001, 50002, '幸福小区回收站', '13800000002', '李老板', '广东省', '深圳市', '南山区', '幸福路12号', 113.9500000, 22.5300000, 1, 1, '[100,200,300]');
+
+-- 门店 3001 自主报价（指导价基础上 ±0.05 演示差价）
+INSERT INTO station_sku_price (id, station_id, sku_id, price, status, remark, created_at, updated_at) VALUES
+(300101001, 3001, 1001, 1.25, 1, '纸箱量大价优', NOW(), NOW()),
+(300101002, 3001, 1002, 0.75, 1, NULL, NOW(), NOW()),
+(300102001, 3001, 2001, 8.55, 1, NULL, NOW(), NOW()),
+(300102002, 3001, 2002, 1.45, 1, NULL, NOW(), NOW()),
+(300103001, 3001, 3001, 0.65, 1, '清空控干', NOW(), NOW()),
+(300104001, 3001, 4001, 8.00, 1, NULL, NOW(), NOW());

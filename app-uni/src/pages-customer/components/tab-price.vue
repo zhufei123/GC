@@ -20,13 +20,17 @@
           <wd-loading color="#07c160" />
         </view>
         <template v-else>
-          <view v-for="sku in skus" :key="sku.id" class="sku-card">
+          <view v-for="sku in skus" :key="sku.id" class="sku-card" @tap="goQuotes(sku)">
             <view class="sku-card__img">
               <wd-icon name="goods" size="44rpx" color="#07c160" />
             </view>
             <view class="sku-card__info">
               <view class="sku-card__name">{{ sku.name }}</view>
               <view v-if="sku.description" class="sku-card__desc">{{ sku.description }}</view>
+              <view class="sku-card__compare">
+                门店比价
+                <wd-icon name="arrow-right" size="20rpx" color="#07c160" />
+              </view>
             </view>
             <view class="sku-card__price">
               <template v-if="sku.price">
@@ -84,6 +88,12 @@ async function loadSkus(cat: CategoryNode) {
 function onCategoryChange({ value }: { value: number }) {
   const cat = categories.value[value];
   if (cat) loadSkus(cat);
+}
+
+function goQuotes(sku: SkuItem) {
+  uni.navigateTo({
+    url: `/pages-customer/store/quotes?skuId=${sku.id}&skuName=${encodeURIComponent(sku.name)}`,
+  });
 }
 
 defineExpose({ refresh });
@@ -167,6 +177,15 @@ defineExpose({ refresh });
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  &__compare {
+    margin-top: 8rpx;
+    display: inline-flex;
+    align-items: center;
+    gap: 4rpx;
+    font-size: 22rpx;
+    color: $theme-color;
   }
 
   &__price {

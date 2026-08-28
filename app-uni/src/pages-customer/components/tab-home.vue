@@ -80,6 +80,21 @@
         </view>
       </view>
 
+      <!-- 附近回收站入口 -->
+      <view class="store-entry" @tap="goNearby">
+        <view class="store-entry__icon">
+          <wd-icon name="location" size="48rpx" color="#4d80f0" />
+        </view>
+        <view class="store-entry__main">
+          <view class="store-entry__title">附近回收站</view>
+          <view class="store-entry__desc">地图找站 · 到店卖 · 比价更划算</view>
+        </view>
+        <view class="store-entry__go">
+          去看看
+          <wd-icon name="arrow-right" size="26rpx" color="#4d80f0" />
+        </view>
+      </view>
+
       <!-- 次要入口 -->
       <view class="quick-row">
         <view class="quick-row__item" @tap="$emit('switch-tab', 1)">
@@ -154,6 +169,10 @@ async function refresh(force = false) {
 
 function goCreate() {
   uni.navigateTo({ url: "/pages-customer/order/create" });
+}
+
+function goNearby() {
+  uni.navigateTo({ url: "/pages-customer/store/nearby" });
 }
 
 refresh();
@@ -333,6 +352,53 @@ defineExpose({ refresh });
     font-weight: 600;
     padding: 12rpx 28rpx;
     border-radius: 32rpx;
+  }
+}
+
+.store-entry {
+  margin-top: 24rpx;
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 28rpx;
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+
+  &__icon {
+    width: 88rpx;
+    height: 88rpx;
+    border-radius: 24rpx;
+    background: #e8f0fe;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  &__main {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__title {
+    font-size: 30rpx;
+    font-weight: 700;
+  }
+
+  &__desc {
+    margin-top: 6rpx;
+    font-size: 22rpx;
+    color: #86909c;
+  }
+
+  &__go {
+    display: flex;
+    align-items: center;
+    gap: 4rpx;
+    color: #4d80f0;
+    font-size: 26rpx;
+    font-weight: 600;
+    flex-shrink: 0;
   }
 }
 

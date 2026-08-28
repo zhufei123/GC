@@ -15,6 +15,7 @@ DROP TABLE IF EXISTS order_item;
 DROP TABLE IF EXISTS recycle_order;
 DROP TABLE IF EXISTS user_address;
 DROP TABLE IF EXISTS sku_price_log;
+DROP TABLE IF EXISTS station_sku_price;
 DROP TABLE IF EXISTS sku_price;
 DROP TABLE IF EXISTS sku;
 DROP TABLE IF EXISTS category;
@@ -154,6 +155,19 @@ CREATE TABLE sku_price (
   deleted       TINYINT       NOT NULL DEFAULT 0,
   KEY idx_price_sku_time (sku_id, city_code, effective_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='SKU指导价';
+
+CREATE TABLE station_sku_price (
+  id          BIGINT PRIMARY KEY,
+  station_id  BIGINT        NOT NULL,
+  sku_id      BIGINT        NOT NULL,
+  price       DECIMAL(10,2) NOT NULL,
+  status      TINYINT       NOT NULL DEFAULT 1 COMMENT '1报价中 0停报',
+  remark      VARCHAR(200)  DEFAULT NULL,
+  created_at  DATETIME      NOT NULL,
+  updated_at  DATETIME      NOT NULL,
+  deleted     TINYINT       NOT NULL DEFAULT 0,
+  UNIQUE KEY uk_station_sku (station_id, sku_id, deleted)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='门店SKU报价';
 
 CREATE TABLE sku_price_log (
   id            BIGINT PRIMARY KEY,

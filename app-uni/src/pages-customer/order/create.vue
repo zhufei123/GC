@@ -1,7 +1,44 @@
 <template>
   <view class="create">
-    <!-- 地址 -->
-    <view class="card address" @tap="chooseAddress">
+    <!-- 回收方式 -->
+    <view class="card">
+      <view class="card__title">回收方式</view>
+      <view class="chips">
+        <view
+          class="chips__item"
+          :class="{ 'chips__item--active': orderType === 'PICKUP' }"
+          @tap="orderType = 'PICKUP'"
+        >
+          上门回收
+        </view>
+        <view
+          class="chips__item"
+          :class="{ 'chips__item--active': orderType === 'DROPOFF' }"
+          @tap="orderType = 'DROPOFF'"
+        >
+          自行送货
+        </view>
+      </view>
+    </view>
+
+    <!-- 回收站 -->
+    <view class="card address" @tap="chooseStore">
+      <view class="address__icon">
+        <wd-icon name="home" size="40rpx" color="#07c160" />
+      </view>
+      <view v-if="store" class="address__info">
+        <view class="address__line1">
+          <text class="address__name">{{ store.name }}</text>
+          <wd-tag type="success" plain>已选回收站</wd-tag>
+        </view>
+        <view v-if="store.address" class="address__line2">{{ store.address }}</view>
+      </view>
+      <view v-else class="address__empty">请选择回收站</view>
+      <wd-icon name="arrow-right" size="30rpx" color="#c0c4cc" />
+    </view>
+
+    <!-- 地址(仅上门回收) -->
+    <view v-if="orderType === 'PICKUP'" class="card address" @tap="chooseAddress">
       <view class="address__icon">
         <wd-icon name="location" size="40rpx" color="#07c160" />
       </view>
@@ -20,7 +57,13 @@
 
     <!-- 回收品类 -->
     <view class="card">
-      <view class="card__title">选择回收品类</view>
+      <view class="card__title">
+        选择回收品类
+        <wd-tag v-if="priceSource === 'store'" type="success" plain custom-class="card__title-tag">
+          门店报价
+        </wd-tag>
+        <wd-tag v-else plain custom-class="card__title-tag">指导价</wd-tag>
+      </view>
       <view v-if="skuLoading" class="create__loading"><wd-loading color="#07c160" /></view>
       <view v-else class="sku-select">
         <view
@@ -59,7 +102,7 @@
 
     <!-- 预约时间 -->
     <view class="card">
-      <view class="card__title">预约时间</view>
+      <view class="card__title">{{ orderType === "PICKUP" ? "预约上门时间" : "预计送达时间" }}</view>
       <view class="chips">
         <view
           v-for="d in dateOptions"
@@ -117,10 +160,16 @@ import type { SkuItem } from "@/api/goods";
 import { getAddressList } from "@/api/address";
 import type { AddressItem } from "@/api/address";
 import { createOrder, getTimeslots } from "@/api/order";
+import { getStorePrices, getCachedStore } from "@/api/store";
+import type { StoreItem } from "@/api/store";
 
 const DEFAULT_PERIODS = ["09:00-11:00", "11:00-13:00", "14:00-16:00", "16:00-18:00"];
 
 const address = ref<AddressItem | null>(null);
+const store = ref<StoreItem | null>(null);
+const orderType = ref<"PICKUP" | "DROPOFF">("PICKUP");
+/** store=门店报价 guide=平台指导价 */
+const priceSource = ref<"store" | "guide">("guide");
 const skus = ref<SkuItem[]>([]);
 const skuLoading = ref(true);
 /** skuId -> 预估重量 */
@@ -168,11 +217,36 @@ function chooseAddress() {
   uni.navigateTo({ url: "/pages-customer/address/list?select=1" });
 }
 
+function chooseStore() {
+  uni.navigateTo({ url: "/pages-customer/store/nearby?select=1" });
+}
+
+/** 门店价目就绪时覆盖指导价；404/为空则维持 sku/list 指导价 */
+async function applyStorePrices() {
+  if (!store.value?.id) {
+    priceSource.value = "guide";
+    return;
+  }
+  try {
+    const list = await getStorePrices(String(store.value.id));
+    if (!Array.isArray(list) || !list.length) throw new Error("empty store prices");
+    const priceMap = new Map(list.map((p) => [String(p.skuId), p]));
+    skus.value = skus.value.map((s) => {
+      const p = priceMap.get(String(s.id));
+      return p ? { ...s, price: p.price != null ? String(p.price) : s.price, unit: p.unit || s.unit } : s;
+    });
+    priceSource.value = "store";
+  } catch (e) {
+    priceSource.value = "guide";
+  }
+}
+
 async function loadData() {
   skuLoading.value = true;
   try {
     const { skus: all } = await getAllSkus();
     skus.value = all;
+    await applyStorePrices();
   } catch (e) {
     skus.value = [];
   } finally {
@@ -206,7 +280,12 @@ async function loadData() {
 }
 
 async function submit() {
-  if (!address.value?.id) {
+  if (!store.value?.id) {
+    uni.showToast({ title: "请先选择回收站", icon: "none" });
+    chooseStore();
+    return;
+  }
+  if (orderType.value === "PICKUP" && !address.value?.id) {
     uni.showToast({ title: "请选择上门地址", icon: "none" });
     return;
   }
@@ -215,14 +294,17 @@ async function submit() {
     return;
   }
   if (!appointPeriod.value) {
-    uni.showToast({ title: "请选择上门时间段", icon: "none" });
+    uni.showToast({ title: "请选择时间段", icon: "none" });
     return;
   }
   submitting.value = true;
   try {
     await createOrder({
-      type: "PICKUP",
-      addressId: String(address.value.id),
+      type: orderType.value,
+      storeId: String(store.value.id),
+      ...(orderType.value === "PICKUP" && address.value?.id
+        ? { addressId: String(address.value.id) }
+        : {}),
       appointDate: appointDate.value,
       appointPeriod: appointPeriod.value,
       estimateItems: selectedList.value.map((s) => ({
@@ -244,9 +326,26 @@ async function submit() {
   }
 }
 
-onLoad(() => {
+onLoad((options) => {
+  if (options?.type === "DROPOFF" || options?.type === "PICKUP") {
+    orderType.value = options.type;
+  }
+  const storeId = options?.storeId ? String(options.storeId) : "";
+  if (storeId) {
+    const cached = getCachedStore(storeId);
+    store.value =
+      cached ||
+      ({
+        id: storeId,
+        name: options?.storeName ? decodeURIComponent(String(options.storeName)) : `回收站 ${storeId}`,
+      } as StoreItem);
+  }
   uni.$on("address-selected", (item: AddressItem) => {
     address.value = item;
+  });
+  uni.$on("store-selected", (item: StoreItem) => {
+    store.value = item;
+    applyStorePrices();
   });
   loadData();
 });
@@ -257,6 +356,7 @@ onShow(() => {
 
 onUnload(() => {
   uni.$off("address-selected");
+  uni.$off("store-selected");
 });
 </script>
 
@@ -295,6 +395,9 @@ onUnload(() => {
     font-size: 30rpx;
     font-weight: 700;
     margin-bottom: 24rpx;
+    display: flex;
+    align-items: center;
+    gap: 16rpx;
   }
 }
 
