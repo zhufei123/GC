@@ -1,0 +1,76 @@
+spring:
+  application:
+    name: recycle-backend
+  profiles:
+    active: local
+  threads:
+    virtual:
+      enabled: true
+  jackson:
+    # java.util.Date 用；java.time 字段以 @JsonFormat 为准（GMT+8）
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+
+server:
+  port: 8080
+  servlet:
+    encoding:
+      charset: UTF-8
+      force: true
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    banner: false
+    db-config:
+      id-type: assign_id
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+sa-token:
+  token-name: Authorization
+  # 请求头直接传 token 值，无 Bearer 前缀
+  token-prefix: ""
+  timeout: 2592000
+  active-timeout: -1
+  is-concurrent: true
+  is-share: false
+  token-style: random-64
+  is-read-cookie: false
+  is-read-header: true
+  is-log: false
+
+springdoc:
+  api-docs:
+    enabled: true
+  group-configs:
+    - group: admin-api
+      paths-to-match: /admin-api/**
+    - group: app-api
+      paths-to-match: /app-api/**
+
+knife4j:
+  enable: true
+  setting:
+    language: zh_cn
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+app:
+  sms:
+    # mock 模式：验证码固定 123456
+    mock: true
+  cos:
+    bucket: recycle-mock-1250000000
+    region: ap-guangzhou
+    cdn-host: https://cdn.example.com
+
+logging:
+  level:
+    com.recycle: info
