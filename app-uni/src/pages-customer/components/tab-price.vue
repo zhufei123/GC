@@ -97,6 +97,7 @@ function goQuotes(sku: SkuItem) {
   });
 }
 
+refresh();
 defineExpose({ refresh });
 </script>
 

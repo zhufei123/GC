@@ -184,6 +184,7 @@ async function onStart(item: OrderVO) {
   }
 }
 
+refresh();
 defineExpose({ refresh });
 </script>
 

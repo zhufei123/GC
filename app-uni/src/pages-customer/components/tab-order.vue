@@ -145,6 +145,7 @@ function onCancel(item: OrderVO) {
   });
 }
 
+refresh();
 defineExpose({ refresh });
 </script>
 

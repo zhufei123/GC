@@ -9,7 +9,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { nextTick, onMounted, ref } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import { RECYCLER_TABS } from "@/config/tabbar";
 import TabWorkbench from "./components/tab-workbench.vue";
@@ -30,6 +30,12 @@ function switchTab(index: number) {
   refs[index].value?.refresh?.();
 }
 
+function refreshActive() {
+  nextTick(() => {
+    refs[active.value].value?.refresh?.();
+  });
+}
+
 onLoad((options) => {
   const tab = Number(options?.tab);
   if (!Number.isNaN(tab) && tab >= 0 && tab <= 3) {
@@ -37,9 +43,9 @@ onLoad((options) => {
   }
 });
 
-onShow(() => {
-  refs[active.value].value?.refresh?.();
-});
+onShow(refreshActive);
+
+onMounted(refreshActive);
 </script>
 
 <style lang="scss" scoped>
