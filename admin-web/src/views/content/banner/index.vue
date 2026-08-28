@@ -89,11 +89,13 @@ async function submitForm(): Promise<void> {
 
   submitting.value = true
   try {
+    // 不跳转时清空 linkUrl,避免残留旧链接
+    const payload = { ...form, linkUrl: form.linkType === 'NONE' ? '' : form.linkUrl }
     if (editId.value) {
-      await updateBanner(editId.value, { ...form })
+      await updateBanner(editId.value, payload)
       ElMessage.success('修改成功')
     } else {
-      await createBanner({ ...form })
+      await createBanner(payload)
       ElMessage.success('新增成功')
     }
     dialogVisible.value = false
@@ -145,8 +147,15 @@ async function handleDelete(row: BannerVO): Promise<void> {
           </template>
         </el-table-column>
         <el-table-column prop="title" label="标题" min-width="160" show-overflow-tooltip />
-        <el-table-column label="跳转链接" min-width="200" show-overflow-tooltip>
-          <template #default="{ row }">{{ row.linkUrl || '-' }}</template>
+        <el-table-column label="跳转" min-width="200" show-overflow-tooltip>
+          <template #default="{ row }">
+            <el-tag size="small" effect="plain" type="info">
+              {{ LINK_TYPE_MAP[row.linkType] ?? row.linkType ?? '不跳转' }}
+            </el-tag>
+            <span v-if="row.linkType !== 'NONE' && row.linkUrl" class="link-url">
+              {{ row.linkUrl }}
+            </span>
+          </template>
         </el-table-column>
         <el-table-column prop="sort" label="排序" width="80" align="center" />
         <el-table-column label="状态" width="90" align="center">
@@ -194,8 +203,18 @@ async function handleDelete(row: BannerVO): Promise<void> {
         <el-form-item label="图片 URL" prop="image">
           <el-input v-model.trim="form.image" placeholder="https://..." />
         </el-form-item>
-        <el-form-item label="跳转链接">
-          <el-input v-model.trim="form.linkUrl" placeholder="可选,点击轮播图跳转地址" />
+        <el-form-item label="跳转类型">
+          <el-radio-group v-model="form.linkType">
+            <el-radio-button value="NONE">不跳转</el-radio-button>
+            <el-radio-button value="PAGE">页面</el-radio-button>
+            <el-radio-button value="RICH">富文本</el-radio-button>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item v-if="form.linkType !== 'NONE'" label="跳转内容" prop="linkUrl">
+          <el-input
+            v-model.trim="form.linkUrl"
+            :placeholder="form.linkType === 'PAGE' ? '小程序页面路径,如 /pages/xxx' : '富文本内容地址'"
+          />
         </el-form-item>
         <el-form-item label="排序">
           <el-input-number v-model="form.sort" :min="0" :max="9999" />
@@ -214,3 +233,11 @@ async function handleDelete(row: BannerVO): Promise<void> {
     </el-dialog>
   </div>
 </template>
+
+<style scoped lang="scss">
+.link-url {
+  margin-left: 8px;
+  font-size: 12px;
+  color: #909399;
+}
+</style>
