@@ -242,7 +242,10 @@ public class AppOrderService {
         review.setUserId(userId);
         review.setStationId(order.getStationId());
         review.setRating(dto.getRating());
-        review.setComment(StringUtils.hasText(dto.getComment()) ? dto.getComment().trim() : null);
+        String comment = StringUtils.hasText(dto.getComment()) ? dto.getComment().trim() : null;
+        review.setComment(comment);
+        // 纯星级直接展示；带文字评论需后台审核后才公开展示
+        review.setAuditStatus(comment == null ? "APPROVED" : "PENDING");
         try {
             orderReviewMapper.insert(review);
         } catch (DuplicateKeyException e) {
@@ -262,6 +265,7 @@ public class AppOrderService {
         vo.setOrderId(review.getOrderId());
         vo.setRating(review.getRating());
         vo.setComment(review.getComment());
+        vo.setAuditStatus(review.getAuditStatus());
         vo.setCreateTime(review.getCreateTime());
         return vo;
     }

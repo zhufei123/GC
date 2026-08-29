@@ -118,6 +118,8 @@ export interface OrderReviewVO {
   orderId?: string;
   rating: number;
   comment?: string;
+  /** PENDING/APPROVED/REJECTED */
+  auditStatus?: string;
   createTime?: string;
 }
 

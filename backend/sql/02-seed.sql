@@ -42,6 +42,8 @@ INSERT INTO sys_menu (id, parent_id, name, title, type, path, component, icon, p
 (513, 51, 'BannerDel', '删除Banner', 'BUTTON', NULL, NULL, NULL, 'content:banner:delete', 3, 1),
 (52, 50, 'Notice', '公告', 'MENU', 'notice', 'content/notice/index', 'ChatLineSquare', 'content:notice:list', 2, 1),
 (521, 52, 'NoticeAdd', '新增公告', 'BUTTON', NULL, NULL, NULL, 'content:notice:add', 1, 1),
+(53, 50, 'ContentReview', '评价审核', 'MENU', 'review', 'content/review/index', 'ChatDotRound', 'content:review:list', 3, 1),
+(531, 53, 'ReviewAudit', '审核评价', 'BUTTON', NULL, NULL, NULL, 'content:review:audit', 1, 1),
 (60, 0, 'System', '系统管理', 'DIR', '/system', NULL, 'Setting', NULL, 60, 1),
 (61, 60, 'SysAdmin', '管理员', 'MENU', 'admin', 'system/admin/index', 'UserFilled', 'system:admin:list', 1, 1),
 (611, 61, 'AdminAdd', '新增管理员', 'BUTTON', NULL, NULL, NULL, 'system:admin:add', 1, 1),

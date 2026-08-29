@@ -1,6 +1,8 @@
 package com.recycle.app.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.recycle.app.support.ChinaRegionCatalog;
+import com.recycle.app.vo.RegionProvinceVO;
 import com.recycle.app.vo.SkuQuoteVO;
 import com.recycle.app.vo.StoreCityVO;
 import com.recycle.app.vo.StoreDetailVO;
@@ -61,6 +63,7 @@ public class AppStoreService {
     private final UserMapper userMapper;
     private final StationPriceReader stationPriceReader;
     private final SkuPriceReader skuPriceReader;
+    private final ChinaRegionCatalog chinaRegionCatalog;
 
     public List<StoreNearbyVO> nearby(BigDecimal longitude, BigDecimal latitude,
                                       BigDecimal radiusKm, String sort) {
@@ -110,6 +113,10 @@ public class AppStoreService {
                 .filter(vo -> vo.getDistanceKm() == null || vo.getDistanceKm().compareTo(radius) <= 0)
                 .sorted(nearbyComparator(sort))
                 .toList();
+    }
+
+    public List<RegionProvinceVO> regions() {
+        return chinaRegionCatalog.provinces();
     }
 
     /**
@@ -229,6 +236,7 @@ public class AppStoreService {
         RecycleStation s = requireVisible(id);
         List<OrderReview> rows = orderReviewMapper.selectList(new LambdaQueryWrapper<OrderReview>()
                 .eq(OrderReview::getStationId, s.getId())
+                .eq(OrderReview::getAuditStatus, "APPROVED")
                 .orderByDesc(OrderReview::getId)
                 .last("LIMIT 50"));
         if (rows.isEmpty()) {

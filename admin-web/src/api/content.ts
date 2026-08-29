@@ -91,3 +91,42 @@ export function updateNotice(id: string, data: NoticeForm) {
 export function deleteNotice(id: string) {
   return request<void>({ url: `/admin-api/content/notice/${id}`, method: 'delete' })
 }
+
+/* ---------------- 评价审核 ---------------- */
+
+export type ReviewAuditStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
+
+export interface OrderReviewAdminVO {
+  id: string
+  orderId?: string
+  userId?: string
+  stationId?: string
+  rating?: number
+  comment?: string
+  auditStatus?: ReviewAuditStatus | string
+  auditRemark?: string
+  auditedAt?: string
+  createTime?: string
+}
+
+export const REVIEW_AUDIT_MAP: Record<string, { label: string; type: 'success' | 'warning' | 'info' | 'danger' }> = {
+  PENDING: { label: '待审核', type: 'warning' },
+  APPROVED: { label: '已通过', type: 'success' },
+  REJECTED: { label: '已拒绝', type: 'danger' },
+}
+
+export function getReviewPage(params: PageQuery) {
+  return request<PageResult<OrderReviewAdminVO>>({
+    url: '/admin-api/content/review/page',
+    method: 'get',
+    params,
+  })
+}
+
+export function auditReview(id: string, status: ReviewAuditStatus, remark?: string) {
+  return request<void>({
+    url: `/admin-api/content/review/${id}/audit`,
+    method: 'post',
+    data: { status, remark },
+  })
+}

@@ -86,6 +86,21 @@ export function getStoreCities() {
   return get<StoreCityItem[]>("/app-api/store/cities", undefined, { silent: true });
 }
 
+export interface RegionCity {
+  name: string;
+  longitude?: number | string;
+  latitude?: number | string;
+}
+
+export interface RegionProvince {
+  name: string;
+  cities?: RegionCity[];
+}
+
+export function getStoreRegions() {
+  return get<RegionProvince[]>("/app-api/store/regions", undefined, { silent: true });
+}
+
 export function getNearbyStores(longitude: number, latitude: number, extra?: { radiusKm?: number; sort?: string }) {
   return get<StoreItem[]>(
     "/app-api/store/nearby",

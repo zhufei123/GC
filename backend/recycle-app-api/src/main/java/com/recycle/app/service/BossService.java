@@ -180,6 +180,9 @@ public class BossService {
         if (!"SERVING".equals(order.getStatus())) {
             throw new BizException(ErrorCode.ORDER_STATUS_ILLEGAL);
         }
+        if (dto.getImages() == null || dto.getImages().isEmpty()) {
+            throw new BizException(ErrorCode.PARAM_ERROR, "请至少上传一张称重照片");
+        }
         List<Long> skuIds = dto.getItems().stream().map(WeighDTO.WeighItem::getSkuId).toList();
         Map<Long, Sku> skus = skuMapper.selectByIds(skuIds).stream()
                 .collect(Collectors.toMap(Sku::getId, Function.identity()));
@@ -222,8 +225,7 @@ public class BossService {
                 .set(RecycleOrder::getStatus, "WEIGHED")
                 .set(RecycleOrder::getActualAmount, total)
                 .set(RecycleOrder::getWeighedAt, LocalDateTime.now())
-                .set(dto.getImages() != null && !dto.getImages().isEmpty(),
-                        RecycleOrder::getPhotosWeigh, JsonUtils.toJson(dto.getImages())));
+                .set(RecycleOrder::getPhotosWeigh, JsonUtils.toJson(dto.getImages())));
         if (rows == 0) {
             throw new BizException(ErrorCode.ORDER_STATUS_ILLEGAL);
         }

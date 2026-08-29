@@ -116,9 +116,9 @@
       <view class="home__footer">— 绿色回收，让地球更轻盈 —</view>
     </view>
 
-    <!-- 城市选择 -->
+    <!-- 城市选择：省 → 市 二级联动 -->
     <wd-action-sheet v-model="cityPickerVisible" title="选择城市">
-      <view v-if="cityPickerVisible" class="city-picker" :key="locationStore.city || 'gps'">
+      <view v-if="cityPickerVisible" class="city-picker">
         <view
           class="city-picker__item city-picker__item--locate"
           :class="{ 'city-picker__item--active': !locationStore.city }"
@@ -130,23 +130,69 @@
           </view>
           <wd-icon v-if="!locationStore.city" name="check" size="32rpx" color="#07c160" />
         </view>
-        <view
-          v-for="c in cities"
-          :key="c.city"
-          class="city-picker__item"
-          :class="{ 'city-picker__item--active': isCityActive(c.city) }"
-          @tap="pickCity(c)"
-        >
-          <text>{{ c.city }}</text>
-          <wd-icon
-            v-if="isCityActive(c.city)"
-            name="check"
-            size="32rpx"
-            color="#07c160"
+
+        <view class="city-picker__hots">
+          <view
+            v-for="h in hotCities"
+            :key="h.name"
+            class="city-picker__hot"
+            :class="{ 'city-picker__hot--on': isCityActive(h.name) }"
+            @tap="pickCity(h, h.province)"
+          >
+            {{ h.name }}
+          </view>
+        </view>
+
+        <view class="city-picker__search">
+          <wd-icon name="search" size="28rpx" color="#9ca3af" />
+          <input
+            v-model="cityKeyword"
+            class="city-picker__search-input"
+            placeholder="搜索城市，如 杭州 / 成都"
+            confirm-type="search"
           />
         </view>
-        <view v-if="!cities.length" class="city-picker__empty">
-          {{ cityLoading ? "城市加载中…" : "暂无可选城市" }}
+
+        <view v-if="cityKeyword.trim()" class="city-picker__search-list">
+          <view
+            v-for="hit in searchHits"
+            :key="hit.province + hit.name"
+            class="city-picker__item"
+            :class="{ 'city-picker__item--active': isCityActive(hit.name) }"
+            @tap="pickCity(hit, hit.province)"
+          >
+            <text>{{ hit.province }} · {{ hit.name }}</text>
+            <wd-icon v-if="isCityActive(hit.name)" name="check" size="32rpx" color="#07c160" />
+          </view>
+          <view v-if="!searchHits.length" class="city-picker__empty">未找到该城市</view>
+        </view>
+
+        <view v-else class="city-picker__cols">
+          <scroll-view scroll-y class="city-picker__prov">
+            <view
+              v-for="p in provinces"
+              :key="p.name"
+              class="city-picker__prov-item"
+              :class="{ 'city-picker__prov-item--on': p.name === activeProvince }"
+              @tap="activeProvince = p.name"
+            >
+              {{ p.name }}
+            </view>
+          </scroll-view>
+          <scroll-view scroll-y class="city-picker__city">
+            <view
+              v-for="c in activeCities"
+              :key="c.name"
+              class="city-picker__item"
+              :class="{ 'city-picker__item--active': isCityActive(c.name) }"
+              @tap="pickCity(c, activeProvince)"
+            >
+              <text>{{ c.name }}</text>
+              <wd-icon v-if="isCityActive(c.name)" name="check" size="32rpx" color="#07c160" />
+            </view>
+            <view v-if="cityLoading" class="city-picker__empty">城市加载中…</view>
+            <view v-else-if="!activeCities.length" class="city-picker__empty">暂无城市</view>
+          </scroll-view>
         </view>
       </view>
     </wd-action-sheet>
@@ -157,7 +203,7 @@
 import { ref, computed } from "vue";
 import { getHome } from "@/api/home";
 import { getCategoryTree } from "@/api/goods";
-import { getStoreCities, type StoreCityItem } from "@/api/store";
+import { getStoreRegions, type RegionCity, type RegionProvince } from "@/api/store";
 import { useLocationStore } from "@/store/location";
 
 defineEmits<{ (e: "switch-tab", index: number, categoryId?: string): void }>();
@@ -185,36 +231,82 @@ const noticeText = computed(() => notices.value.map((n) => n.title).join("    ")
 const locationStore = useLocationStore();
 const cityPickerVisible = ref(false);
 const cityLoading = ref(false);
-const cities = ref<StoreCityItem[]>([]);
+const provinces = ref<RegionProvince[]>([]);
+const activeProvince = ref("广东省");
+const cityKeyword = ref("");
 
-const cityLabel = computed(() => locationStore.city || "深圳市");
+const HOT_NAMES = ["北京市", "上海市", "广州市", "深圳市", "杭州市", "成都市"];
 
-/** 归一化城市名，兼容「深圳」与「深圳市」比较 */
+const cityLabel = computed(() => locationStore.city || "请选择城市");
+
 function normCity(s?: string) {
   return (s || "").replace(/市$/, "");
 }
 
 function isCityActive(city: string) {
   const stored = locationStore.city;
-  if (stored) return normCity(stored) === normCity(city);
-  return normCity(city) === "深圳";
+  if (!stored) return false;
+  return normCity(stored) === normCity(city);
 }
+
+const activeCities = computed<RegionCity[]>(() => {
+  const p = provinces.value.find((x) => x.name === activeProvince.value);
+  return p?.cities || [];
+});
+
+const hotCities = computed(() => {
+  const hits: Array<RegionCity & { province: string }> = [];
+  for (const name of HOT_NAMES) {
+    for (const p of provinces.value) {
+      const c = (p.cities || []).find((x) => x.name === name);
+      if (c) {
+        hits.push({ ...c, province: p.name });
+        break;
+      }
+    }
+  }
+  return hits;
+});
+
+const searchHits = computed(() => {
+  const kw = cityKeyword.value.trim();
+  if (!kw) return [];
+  const hits: Array<RegionCity & { province: string }> = [];
+  for (const p of provinces.value) {
+    for (const c of p.cities || []) {
+      if (c.name.includes(kw) || p.name.includes(kw)) {
+        hits.push({ ...c, province: p.name });
+      }
+    }
+  }
+  return hits.slice(0, 40);
+});
 
 async function openCityPicker() {
   cityPickerVisible.value = true;
-  if (cities.value.length || cityLoading.value) return;
-  cityLoading.value = true;
-  try {
-    cities.value = (await getStoreCities()) || [];
-  } catch (e) {
-    /* 空态展示 */
-  } finally {
-    cityLoading.value = false;
+  cityKeyword.value = "";
+  if (!provinces.value.length) {
+    cityLoading.value = true;
+    try {
+      provinces.value = (await getStoreRegions()) || [];
+    } catch (e) {
+      /* 空态 */
+    } finally {
+      cityLoading.value = false;
+    }
+  }
+  if (locationStore.province) {
+    activeProvince.value = locationStore.province;
+  } else if (locationStore.city) {
+    const found = provinces.value.find((p) =>
+      (p.cities || []).some((c) => isCityActive(c.name))
+    );
+    if (found) activeProvince.value = found.name;
   }
 }
 
-function pickCity(c: StoreCityItem) {
-  locationStore.setCity(c.city, Number(c.longitude) || 0, Number(c.latitude) || 0);
+function pickCity(c: RegionCity, province?: string) {
+  locationStore.setCity(c.name, Number(c.longitude) || 0, Number(c.latitude) || 0, province);
   cityPickerVisible.value = false;
 }
 
@@ -492,16 +584,15 @@ defineExpose({ refresh });
 }
 
 .city-picker {
-  max-height: 60vh;
-  overflow-y: auto;
-  padding: 0 32rpx 40rpx;
+  max-height: 70vh;
   background: #fff;
+  padding: 0 0 16rpx;
 
   &__item {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 28rpx 8rpx;
+    padding: 24rpx 32rpx;
     border-bottom: 1rpx solid #f2f3f5;
     font-size: 28rpx;
 
@@ -509,16 +600,84 @@ defineExpose({ refresh });
       color: $theme-color;
       font-weight: 600;
     }
-
-    &--locate {
-      /* 未选城市时与选中项同样高亮；选了城市后仅「使用当前位置」普通色 */
-    }
   }
 
   &__locate {
     display: flex;
     align-items: center;
     gap: 12rpx;
+  }
+
+  &__hots {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16rpx;
+    padding: 16rpx 32rpx 8rpx;
+  }
+
+  &__hot {
+    padding: 10rpx 22rpx;
+    border-radius: 28rpx;
+    background: #f5f6f8;
+    font-size: 24rpx;
+    color: #4e5969;
+
+    &--on {
+      background: #e8f9ef;
+      color: $theme-color;
+      font-weight: 600;
+    }
+  }
+
+  &__search {
+    display: flex;
+    align-items: center;
+    gap: 12rpx;
+    margin: 12rpx 32rpx 16rpx;
+    background: #f5f6f8;
+    border-radius: 32rpx;
+    padding: 0 24rpx;
+    height: 64rpx;
+  }
+
+  &__search-input {
+    flex: 1;
+    font-size: 26rpx;
+    height: 64rpx;
+  }
+
+  &__search-list {
+    max-height: 46vh;
+    overflow-y: auto;
+  }
+
+  &__cols {
+    display: flex;
+    height: 52vh;
+    border-top: 1rpx solid #f2f3f5;
+  }
+
+  &__prov {
+    width: 240rpx;
+    background: #f7f8fa;
+    height: 100%;
+  }
+
+  &__prov-item {
+    padding: 24rpx 20rpx;
+    font-size: 26rpx;
+    color: #4e5969;
+
+    &--on {
+      background: #fff;
+      color: $theme-color;
+      font-weight: 600;
+    }
+  }
+
+  &__city {
+    flex: 1;
+    height: 100%;
   }
 
   &__empty {

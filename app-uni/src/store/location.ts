@@ -8,6 +8,7 @@ const STORAGE_KEY = "RECYCLE_APP_LOCATION";
  */
 export const useLocationStore = defineStore("location", {
   state: () => ({
+    province: "",
     city: "",
     longitude: 0,
     latitude: 0,
@@ -22,8 +23,9 @@ export const useLocationStore = defineStore("location", {
     },
   },
   actions: {
-    setCity(city: string, longitude?: number | null, latitude?: number | null) {
+    setCity(city: string, longitude?: number | null, latitude?: number | null, province?: string) {
       this.city = city || "";
+      this.province = province || "";
       this.longitude = Number(longitude) || 0;
       this.latitude = Number(latitude) || 0;
       this.persist();
@@ -32,6 +34,7 @@ export const useLocationStore = defineStore("location", {
       uni.setStorageSync(
         STORAGE_KEY,
         JSON.stringify({
+          province: this.province,
           city: this.city,
           longitude: this.longitude,
           latitude: this.latitude,
@@ -43,6 +46,7 @@ export const useLocationStore = defineStore("location", {
         const raw = uni.getStorageSync(STORAGE_KEY);
         if (raw) {
           const data = JSON.parse(raw);
+          this.province = data.province || "";
           this.city = data.city || "";
           this.longitude = Number(data.longitude) || 0;
           this.latitude = Number(data.latitude) || 0;
@@ -53,6 +57,7 @@ export const useLocationStore = defineStore("location", {
     },
     /** 清除已选城市(含持久化)，resolveUserLocation 回退到 GPS/地址定位 */
     clear() {
+      this.province = "";
       this.city = "";
       this.longitude = 0;
       this.latitude = 0;

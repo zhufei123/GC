@@ -148,6 +148,8 @@
             <text class="review__done-score">{{ review.rating }}.0 分</text>
           </view>
           <view v-if="review.comment" class="review__comment">{{ review.comment }}</view>
+          <view v-if="review.auditStatus === 'PENDING'" class="review__audit">评论审核中，通过后将公开展示</view>
+          <view v-else-if="review.auditStatus === 'REJECTED'" class="review__audit review__audit--reject">未通过公开</view>
           <view v-if="review.createTime" class="review__time">评价于 {{ review.createTime }}</view>
         </template>
 
@@ -699,6 +701,16 @@ onLoad((options) => {
     background: #f7f8fa;
     border-radius: 16rpx;
     padding: 20rpx;
+  }
+
+  &__audit {
+    margin-top: 12rpx;
+    font-size: 24rpx;
+    color: #ff8f1f;
+
+    &--reject {
+      color: #f53f3f;
+    }
   }
 
   &__time {

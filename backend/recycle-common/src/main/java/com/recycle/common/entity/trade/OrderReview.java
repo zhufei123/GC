@@ -17,4 +17,8 @@ public class OrderReview extends BaseEntity {
     /** 1-5 星 */
     private Integer rating;
     private String comment;
+    /** PENDING/APPROVED/REJECTED；有文字评论需审核 */
+    private String auditStatus;
+    private String auditRemark;
+    private java.time.LocalDateTime auditedAt;
 }

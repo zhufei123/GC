@@ -11,6 +11,6 @@ public interface OrderReviewMapper extends BaseMapper<OrderReview> {
 
     /** 门店评价统计：reviewCount + avgRating（无评价时 avgRating 为 null） */
     @Select("SELECT COUNT(*) AS reviewCount, AVG(rating) AS avgRating "
-            + "FROM order_review WHERE station_id = #{stationId} AND deleted = 0")
+            + "FROM order_review WHERE station_id = #{stationId} AND deleted = 0 AND audit_status = 'APPROVED'")
     Map<String, Object> statsByStation(@Param("stationId") Long stationId);
 }

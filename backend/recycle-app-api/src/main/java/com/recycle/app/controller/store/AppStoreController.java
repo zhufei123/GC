@@ -1,6 +1,7 @@
 package com.recycle.app.controller.store;
 
 import com.recycle.app.service.AppStoreService;
+import com.recycle.app.vo.RegionProvinceVO;
 import com.recycle.app.vo.StoreCityVO;
 import com.recycle.app.vo.StoreDetailVO;
 import com.recycle.app.vo.StoreNearbyVO;
@@ -34,6 +35,12 @@ public class AppStoreController {
                                          @RequestParam(required = false) BigDecimal radiusKm,
                                          @RequestParam(required = false) String sort) {
         return R.ok(storeService.nearby(longitude, latitude, radiusKm, sort));
+    }
+
+    @Operation(summary = "全国省-市二级区划（城市选择器）")
+    @GetMapping("/regions")
+    public R<List<RegionProvinceVO>> regions() {
+        return R.ok(storeService.regions());
     }
 
     @Operation(summary = "城市列表（按可见门店分组，含兜底城市）")
