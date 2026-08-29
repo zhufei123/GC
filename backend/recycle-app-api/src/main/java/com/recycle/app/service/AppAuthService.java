@@ -125,17 +125,50 @@ public class AppAuthService {
             user.setStatus(1);
             user.setBalance(BigDecimal.ZERO);
             user.setRecyclerStatus("none");
+            applyClientProfile(user, dto.getNickname(), dto.getAvatar(), dto.getGender(), dto.getCity());
             userMapper.insert(user);
             isNew = true;
-        } else if (StringUtils.hasText(unionid) && !unionid.equals(user.getUnionidWx())) {
-            user.setUnionidWx(unionid);
-            userMapper.updateById(user);
+        } else {
+            boolean changed = false;
+            if (StringUtils.hasText(unionid) && !unionid.equals(user.getUnionidWx())) {
+                user.setUnionidWx(unionid);
+                changed = true;
+            }
+            changed |= applyClientProfile(user, dto.getNickname(), dto.getAvatar(), dto.getGender(), dto.getCity());
+            if (changed) {
+                userMapper.updateById(user);
+            }
         }
         AppLoginVO vo = loginAs(user, dto.getClient());
         if (!boss) {
             vo.setIsNewUser(isNew);
         }
         return vo;
+    }
+
+    /**
+     * 客户端携带的可选资料落库：只以非空值更新，空值不覆盖已有资料。
+     * 手机号不在登录接口写入（可被伪造）；正式号码走 bind-phone / bind-phone-wx / bind-phone-alipay。
+     */
+    private boolean applyClientProfile(User user, String nickname, String avatar, Integer gender, String city) {
+        boolean changed = false;
+        if (StringUtils.hasText(nickname) && !nickname.equals(user.getNickname())) {
+            user.setNickname(nickname);
+            changed = true;
+        }
+        if (StringUtils.hasText(avatar) && !avatar.equals(user.getAvatar())) {
+            user.setAvatar(avatar);
+            changed = true;
+        }
+        if (gender != null && gender > 0 && !gender.equals(user.getGender())) {
+            user.setGender(gender);
+            changed = true;
+        }
+        if (StringUtils.hasText(city) && !city.equals(user.getCity())) {
+            user.setCity(city);
+            changed = true;
+        }
+        return changed;
     }
 
     /** 小程序 jscode2session 换 openid/unionid */
@@ -186,8 +219,11 @@ public class AppAuthService {
             user.setStatus(1);
             user.setBalance(BigDecimal.ZERO);
             user.setRecyclerStatus("none");
+            applyClientProfile(user, dto.getNickname(), dto.getAvatar(), dto.getGender(), dto.getCity());
             userMapper.insert(user);
             isNew = true;
+        } else if (applyClientProfile(user, dto.getNickname(), dto.getAvatar(), dto.getGender(), dto.getCity())) {
+            userMapper.updateById(user);
         }
         AppLoginVO vo = loginAs(user, dto.getClient());
         if (!boss) {
@@ -317,6 +353,32 @@ public class AppAuthService {
             existing.setOpenidAlipay(current.getOpenidAlipay());
             changed = true;
         }
+        // 三方资料一并带到存活账号，消息身份（openid/头像等）不因合并丢失
+        if (!StringUtils.hasText(existing.getAvatar()) && StringUtils.hasText(current.getAvatar())) {
+            existing.setAvatar(current.getAvatar());
+            changed = true;
+        }
+        if (!StringUtils.hasText(existing.getNickname()) && StringUtils.hasText(current.getNickname())) {
+            existing.setNickname(current.getNickname());
+            changed = true;
+        }
+        if ((existing.getGender() == null || existing.getGender() == 0)
+                && current.getGender() != null && current.getGender() > 0) {
+            existing.setGender(current.getGender());
+            changed = true;
+        }
+        if (!StringUtils.hasText(existing.getCity()) && StringUtils.hasText(current.getCity())) {
+            existing.setCity(current.getCity());
+            changed = true;
+        }
+        if (Integer.valueOf(1).equals(current.getSubscribeWx()) && !Integer.valueOf(1).equals(existing.getSubscribeWx())) {
+            existing.setSubscribeWx(1);
+            changed = true;
+        }
+        if (Integer.valueOf(1).equals(current.getSubscribeAlipay()) && !Integer.valueOf(1).equals(existing.getSubscribeAlipay())) {
+            existing.setSubscribeAlipay(1);
+            changed = true;
+        }
         if (changed) {
             userMapper.updateById(existing);
         }
@@ -369,8 +431,23 @@ public class AppAuthService {
         vo.setUserId(user.getId());
         vo.setRole(user.getRole());
         vo.setHasPhone(StringUtils.hasText(user.getPhone()));
+        vo.setPhoneMasked(maskPhone(user.getPhone()));
         vo.setNickname(user.getNickname());
+        vo.setAvatar(user.getAvatar());
+        vo.setHasWx(StringUtils.hasText(user.getOpenidWx()));
+        vo.setHasAlipay(StringUtils.hasText(user.getOpenidAlipay()));
         vo.setRecyclerStatus(user.getRecyclerStatus());
         return vo;
+    }
+
+    /** 138****0001；openid 不出前端，手机号只回脱敏值 */
+    private String maskPhone(String phone) {
+        if (!StringUtils.hasText(phone)) {
+            return null;
+        }
+        if (phone.length() < 8) {
+            return "****";
+        }
+        return phone.substring(0, 3) + "****" + phone.substring(phone.length() - 4);
     }
 }

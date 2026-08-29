@@ -75,6 +75,13 @@ public class AppUserController {
         return R.ok();
     }
 
+    @Operation(summary = "上报订阅消息授权（channel: wx|alipay）")
+    @PostMapping("/subscribe-report/{channel}")
+    public R<Void> reportSubscribe(@PathVariable String channel) {
+        userService.markSubscribed(CurrentUser.id(), channel);
+        return R.ok();
+    }
+
     @Operation(summary = "我的消息分页（站内通知）")
     @GetMapping("/notices")
     public R<PageResult<NotifyLog>> notices(PageQuery query) {

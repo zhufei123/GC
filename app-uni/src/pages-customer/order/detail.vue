@@ -93,6 +93,13 @@
             {{ payoutStatusText(order.payoutStatus) }}
           </wd-tag>
         </view>
+        <view
+          v-if="order.payoutStatus === 'FAILED' && order.payoutFailReason"
+          class="pay-row"
+        >
+          <text class="pay-row__label">失败原因</text>
+          <text>{{ order.payoutFailReason }}</text>
+        </view>
         <view v-if="order.paidAt" class="pay-row">
           <text class="pay-row__label">打款时间</text>
           <text>{{ order.paidAt }}</text>

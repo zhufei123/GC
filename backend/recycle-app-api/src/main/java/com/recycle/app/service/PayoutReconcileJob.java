@@ -22,14 +22,21 @@ public class PayoutReconcileJob {
     private final PayoutOrderMapper payoutOrderMapper;
 
     @Scheduled(fixedDelay = 3600_000, initialDelay = 60_000)
-    public void alertStaleWaitConfirm() {
+    public void alertStalePayout() {
+        // WAIT_USER_CONFIRM 有效期长（微信确认收款 24h 过期），24h 未确认才告警
+        alertStale("WAIT_USER_CONFIRM", LocalDateTime.now().minusHours(24));
+        // PROCESSING 是渠道受理后的短暂中间态，1h 未落终态即视为卡单（回调丢失/渠道异常）
+        alertStale("PROCESSING", LocalDateTime.now().minusHours(1));
+    }
+
+    private void alertStale(String status, LocalDateTime createdBefore) {
         List<PayoutOrder> stale = payoutOrderMapper.selectList(new LambdaQueryWrapper<PayoutOrder>()
-                .eq(PayoutOrder::getStatus, "WAIT_USER_CONFIRM")
-                .lt(PayoutOrder::getCreateTime, LocalDateTime.now().minusHours(24))
+                .eq(PayoutOrder::getStatus, status)
+                .lt(PayoutOrder::getCreateTime, createdBefore)
                 .last("LIMIT 100"));
         for (PayoutOrder payout : stale) {
-            log.warn("[payout-reconcile] WAIT_USER_CONFIRM over 24h payoutNo={} orderId={} amount={} createTime={}",
-                    payout.getPayoutNo(), payout.getOrderId(), payout.getAmount(), payout.getCreateTime());
+            log.warn("[payout-reconcile] stale {} payoutNo={} orderId={} amount={} createTime={}",
+                    status, payout.getPayoutNo(), payout.getOrderId(), payout.getAmount(), payout.getCreateTime());
         }
     }
 }

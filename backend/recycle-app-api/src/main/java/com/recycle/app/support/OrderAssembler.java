@@ -74,11 +74,13 @@ public class OrderAssembler {
             vo.setActualItems(items.stream()
                     .filter(i -> "ACTUAL".equals(i.getItemType()))
                     .map(this::toItemVO).toList());
-            // 详情补充打款单 package_info（微信商家转账确认收款用）
+            // 详情补充打款单号/失败原因/package_info（微信商家转账确认收款用）
             if (StringUtils.hasText(order.getPayoutStatus())) {
                 PayoutOrder payout = payoutOrderMapper.selectOne(new LambdaQueryWrapper<PayoutOrder>()
                         .eq(PayoutOrder::getOrderId, order.getId()));
                 if (payout != null) {
+                    vo.setPayoutNo(payout.getPayoutNo());
+                    vo.setPayoutFailReason(payout.getFailReason());
                     vo.setPackageInfo(payout.getPackageInfo());
                 }
             }

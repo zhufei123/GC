@@ -36,6 +36,10 @@ CREATE TABLE `user` (
   phone         VARCHAR(20)  DEFAULT NULL,
   nickname      VARCHAR(64)  DEFAULT NULL,
   avatar        VARCHAR(512) DEFAULT NULL,
+  gender        TINYINT      DEFAULT NULL COMMENT '0未知 1男 2女',
+  city          VARCHAR(64)  DEFAULT NULL COMMENT '资料城市（授权时）',
+  subscribe_wx  TINYINT      NOT NULL DEFAULT 0 COMMENT '1=曾授权微信订阅消息',
+  subscribe_alipay TINYINT   NOT NULL DEFAULT 0 COMMENT '1=曾授权支付宝订阅消息',
   role          VARCHAR(20)  NOT NULL DEFAULT 'customer' COMMENT 'customer/recycler',
   status        TINYINT      NOT NULL DEFAULT 1 COMMENT '1启用 0禁用',
   balance       DECIMAL(12,2) NOT NULL DEFAULT 0.00 COMMENT '钱包预留',
@@ -293,7 +297,9 @@ CREATE TABLE payout_order (
   update_time     DATETIME      NOT NULL,
   deleted         TINYINT       NOT NULL DEFAULT 0,
   UNIQUE KEY uk_payout_no (payout_no),
-  UNIQUE KEY uk_payout_order (order_id, deleted)
+  UNIQUE KEY uk_payout_order (order_id, deleted),
+  KEY idx_payout_status_time (status, create_time),
+  KEY idx_payout_user (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='打款单(站点付客户)';
 
 CREATE TABLE notify_log (

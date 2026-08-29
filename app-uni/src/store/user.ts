@@ -9,6 +9,12 @@ export interface LoginPayload {
   role: Role;
   recyclerStatus: RecyclerStatus;
   nickname: string;
+  avatar?: string;
+  /** 脱敏手机号（138****0001） */
+  phoneMasked?: string;
+  /** 是否已绑定微信/支付宝（原始 openid 不出前端） */
+  hasWx?: boolean;
+  hasAlipay?: boolean;
   storeId?: string | null;
   /** 三方登录返回：false 时需补绑手机号 */
   hasPhone?: boolean;
@@ -24,6 +30,7 @@ export const useUserStore = defineStore("user", {
     role: "customer" as Role,
     recyclerStatus: "none" as RecyclerStatus,
     nickname: "",
+    avatar: "",
     storeId: "" as string | null,
     /** 三方登录未绑手机号时为 false，下单等场景需先补绑 */
     hasPhone: true,
@@ -46,6 +53,7 @@ export const useUserStore = defineStore("user", {
       this.role = (data.role as Role) || "customer";
       this.recyclerStatus = (data.recyclerStatus as RecyclerStatus) || "none";
       this.nickname = data.nickname || "";
+      this.avatar = data.avatar || "";
       this.storeId = data.storeId ? String(data.storeId) : "";
       // 手机号登录/补绑后不返回 hasPhone 字段，视为已绑定
       this.hasPhone = data.hasPhone !== false;
@@ -68,6 +76,7 @@ export const useUserStore = defineStore("user", {
           role: this.role,
           recyclerStatus: this.recyclerStatus,
           nickname: this.nickname,
+          avatar: this.avatar,
           storeId: this.storeId,
           hasPhone: this.hasPhone,
         })
@@ -83,6 +92,7 @@ export const useUserStore = defineStore("user", {
           this.role = data.role || "customer";
           this.recyclerStatus = data.recyclerStatus || "none";
           this.nickname = data.nickname || "";
+          this.avatar = data.avatar || "";
           this.storeId = data.storeId || "";
           this.hasPhone = data.hasPhone !== false;
         }
@@ -96,6 +106,7 @@ export const useUserStore = defineStore("user", {
       this.role = "customer";
       this.recyclerStatus = "none";
       this.nickname = "";
+      this.avatar = "";
       this.storeId = "";
       this.hasPhone = true;
       uni.removeStorageSync(STORAGE_KEY);

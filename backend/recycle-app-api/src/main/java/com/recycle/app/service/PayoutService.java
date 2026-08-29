@@ -171,6 +171,7 @@ public class PayoutService {
     /**
      * C 端确认收款（H5/mock 对标小程序 wx.requestMerchantTransfer 成功回调）：
      * WAIT_USER_CONFIRM → SUCCESS，并同步订单打款状态。
+     * 状态流转用条件 UPDATE 保证原子性：与渠道回调并发时只有一方生效；已 SUCCESS 幂等返回。
      */
     @Transactional
     public PayoutOrder confirmUserReceive(Long userId, Long orderId) {
@@ -179,14 +180,25 @@ public class PayoutService {
         if (payout == null || !payout.getUserId().equals(userId)) {
             throw new BizException(ErrorCode.ORDER_NOT_FOUND, "打款单不存在");
         }
-        if (!"WAIT_USER_CONFIRM".equals(payout.getStatus())) {
+        if (!WX_TRANSFER.equals(payout.getChannel())) {
+            throw new BizException(ErrorCode.ORDER_STATUS_ILLEGAL, "非微信打款单，无需确认收款");
+        }
+        if ("SUCCESS".equals(payout.getStatus())) {
+            // 重复点击/回调已先落终态：幂等成功，不再改库
+            return payout;
+        }
+        String billNo = StringUtils.hasText(payout.getChannelBillNo())
+                ? payout.getChannelBillNo() : "MOCKWX" + payout.getPayoutNo();
+        int rows = payoutOrderMapper.update(null, new LambdaUpdateWrapper<PayoutOrder>()
+                .eq(PayoutOrder::getId, payout.getId())
+                .eq(PayoutOrder::getStatus, "WAIT_USER_CONFIRM")
+                .set(PayoutOrder::getStatus, "SUCCESS")
+                .set(PayoutOrder::getChannelBillNo, billNo));
+        if (rows == 0) {
             throw new BizException(ErrorCode.ORDER_STATUS_ILLEGAL, "打款单当前状态不可确认收款");
         }
         payout.setStatus("SUCCESS");
-        if (!StringUtils.hasText(payout.getChannelBillNo())) {
-            payout.setChannelBillNo("MOCKWX" + payout.getPayoutNo());
-        }
-        payoutOrderMapper.updateById(payout);
+        payout.setChannelBillNo(billNo);
         recycleOrderMapper.update(null, new LambdaUpdateWrapper<RecycleOrder>()
                 .eq(RecycleOrder::getId, orderId)
                 .set(RecycleOrder::getPayoutStatus, "SUCCESS")
@@ -194,7 +206,10 @@ public class PayoutService {
         return payout;
     }
 
-    /** 渠道回调落终态：仅 WAIT_USER_CONFIRM/PROCESSING 可流转，其余状态忽略（幂等） */
+    /**
+     * 渠道回调落终态：仅 WAIT_USER_CONFIRM/PROCESSING 可流转，其余状态忽略（幂等）。
+     * 条件 UPDATE 原子锁定流转：并发确认收款/重复回调只有一方生效，已落的终态不会被后续回调覆盖。
+     */
     @Transactional
     public boolean applyChannelResult(String payoutNo, boolean success, String channelBillNo, String failReason) {
         PayoutOrder payout = payoutOrderMapper.selectOne(new LambdaQueryWrapper<PayoutOrder>()
@@ -203,23 +218,34 @@ public class PayoutService {
             log.warn("[payout] notify for unknown payoutNo={}", payoutNo);
             return false;
         }
-        if (!"WAIT_USER_CONFIRM".equals(payout.getStatus()) && !"PROCESSING".equals(payout.getStatus())) {
-            log.info("[payout] notify ignored, payoutNo={} status={}", payoutNo, payout.getStatus());
+        String target = success ? "SUCCESS" : "FAILED";
+        String billNo = truncate(channelBillNo, 64);
+        String reason = truncate(failReason, 200);
+        int rows = payoutOrderMapper.update(null, new LambdaUpdateWrapper<PayoutOrder>()
+                .eq(PayoutOrder::getId, payout.getId())
+                .in(PayoutOrder::getStatus, "WAIT_USER_CONFIRM", "PROCESSING")
+                .set(PayoutOrder::getStatus, target)
+                .set(StringUtils.hasText(billNo), PayoutOrder::getChannelBillNo, billNo)
+                .set(!success && StringUtils.hasText(reason), PayoutOrder::getFailReason, reason));
+        if (rows == 0) {
+            log.info("[payout] notify ignored, payoutNo={} status={} already terminal",
+                    payoutNo, payout.getStatus());
             return true;
         }
-        payout.setStatus(success ? "SUCCESS" : "FAILED");
-        if (StringUtils.hasText(channelBillNo)) {
-            payout.setChannelBillNo(channelBillNo);
-        }
-        if (!success && StringUtils.hasText(failReason)) {
-            payout.setFailReason(failReason);
-        }
-        payoutOrderMapper.updateById(payout);
         recycleOrderMapper.update(null, new LambdaUpdateWrapper<RecycleOrder>()
                 .eq(RecycleOrder::getId, payout.getOrderId())
-                .set(RecycleOrder::getPayoutStatus, payout.getStatus())
+                .set(RecycleOrder::getPayoutStatus, target)
                 .set(success, RecycleOrder::getPaidAt, LocalDateTime.now()));
+        log.info("[payout] notify applied, payoutNo={} -> {}", payoutNo, target);
         return true;
+    }
+
+    /** 回调字段可能超库表列宽（channel_bill_no 64 / fail_reason 200），落库前截断 */
+    private static String truncate(String value, int maxLen) {
+        if (value == null || value.length() <= maxLen) {
+            return value;
+        }
+        return value.substring(0, maxLen);
     }
 
     /** PO + 时间戳 + 订单 id 后 4 位 + 随机 4 位，降低同秒碰撞概率 */

@@ -41,6 +41,10 @@ export interface OrderVO {
   /** SUCCESS/PROCESSING/WAIT_USER_CONFIRM/FAILED */
   payoutStatus?: string;
   paidAt?: string;
+  /** 打款单号(详情返回) */
+  payoutNo?: string;
+  /** 打款失败原因(payoutStatus=FAILED 时详情返回) */
+  payoutFailReason?: string;
   /** 微信商家转账确认收款 package 信息(详情返回) */
   packageInfo?: string;
   createTime?: string;

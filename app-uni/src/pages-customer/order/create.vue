@@ -183,6 +183,7 @@ import { createOrder, getTimeslots } from "@/api/order";
 import { getStorePrices, getCachedStore } from "@/api/store";
 import type { StoreItem } from "@/api/store";
 import { chooseAndUpload } from "@/utils/upload";
+import { reportSubscribe } from "@/api/auth";
 import { useUserStore } from "@/store/user";
 
 /** 支付宝小程序全局对象(仅 MP-ALIPAY 运行时存在) */
@@ -260,6 +261,12 @@ function requestOrderSubscribe(): Promise<void> {
       try {
         (uni as any).requestSubscribeMessage({
           tmplIds: tmplIds.slice(0, 3),
+          success: (res: any) => {
+            // 任一模板 accept 即记录授权标记（静默尽力而为，供后端筛选可推送用户）
+            if (tmplIds.some((id) => res?.[id] === "accept")) {
+              reportSubscribe("wx").catch(() => {});
+            }
+          },
           complete: () => resolve(),
         });
         return;
@@ -279,6 +286,11 @@ function requestOrderSubscribe(): Promise<void> {
       try {
         my.requestSubscribeMessage({
           entityIds: entityIds.slice(0, 3),
+          success: (res: any) => {
+            if (res?.behavior !== "cancel") {
+              reportSubscribe("alipay").catch(() => {});
+            }
+          },
           complete: () => resolve(),
         });
         return;

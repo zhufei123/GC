@@ -54,6 +54,10 @@ public class NotifyService {
             return;
         }
         String wxTemplateId = wxProps.getSubscribeTemplates().get(templateKey);
+        if (StringUtils.hasText(wxTemplateId) && !StringUtils.hasText(user.getOpenidWx())) {
+            log.warn("[notify] skip wx push: userId={} templateKey={} 已配置模板但 user.openid_wx 为空（用户未微信登录/绑定）",
+                    userId, templateKey);
+        }
         if (StringUtils.hasText(user.getOpenidWx()) && StringUtils.hasText(wxTemplateId)) {
             try {
                 wxSubscribeClient.send(user.getOpenidWx(), wxTemplateId, null, templateData(title, content));
@@ -64,6 +68,10 @@ public class NotifyService {
             }
         }
         String alipayTemplateId = alipayProps.getMessageTemplates().get(templateKey);
+        if (StringUtils.hasText(alipayTemplateId) && !StringUtils.hasText(user.getOpenidAlipay())) {
+            log.warn("[notify] skip alipay push: userId={} templateKey={} 已配置模板但 user.openid_alipay 为空（用户未支付宝登录/绑定）",
+                    userId, templateKey);
+        }
         if (StringUtils.hasText(user.getOpenidAlipay()) && StringUtils.hasText(alipayTemplateId)) {
             try {
                 alipayMessageClient.send(user.getOpenidAlipay(), alipayTemplateId, null, templateData(title, content));

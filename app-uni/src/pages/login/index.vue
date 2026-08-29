@@ -149,6 +149,7 @@ import {
   bindPhone as apiBindPhone,
   bindPhoneWx as apiBindPhoneWx,
   bindPhoneAlipay as apiBindPhoneAlipay,
+  type ThirdLoginProfile,
 } from "@/api/auth";
 import { useUserStore, type LoginPayload } from "@/store/user";
 
@@ -257,6 +258,70 @@ function uniLoginCode(provider: "weixin" | "alipay"): Promise<string> {
   });
 }
 
+/**
+ * 微信资料授权（getUserProfile 须在点击手势内发起）：
+ * 拒绝授权/新版微信返回匿名「微信用户」时返回空对象，不阻断登录。
+ */
+function wxUserProfile(): Promise<ThirdLoginProfile> {
+  return new Promise((resolve) => {
+    // #ifdef MP-WEIXIN
+    try {
+      (uni as any).getUserProfile({
+        desc: "用于完善会员资料与订单通知",
+        success: (res: any) => {
+          const info = res?.userInfo || {};
+          const anonymous = !info.nickName || info.nickName === "微信用户";
+          resolve({
+            nickname: anonymous ? undefined : info.nickName,
+            avatar: info.avatarUrl || undefined,
+            gender: info.gender > 0 ? info.gender : undefined,
+            city: info.city || undefined,
+          });
+        },
+        fail: () => resolve({}),
+      });
+      return;
+    } catch (e) {
+      resolve({});
+      return;
+    }
+    // #endif
+    resolve({});
+  });
+}
+
+/** 支付宝会员资料（getOpenUserInfo 需在开放平台开通「获取会员信息」）；未开通/拒绝返回空对象 */
+function alipayUserProfile(): Promise<ThirdLoginProfile> {
+  return new Promise((resolve) => {
+    // #ifdef MP-ALIPAY
+    try {
+      my.getOpenUserInfo({
+        success: (res: any) => {
+          try {
+            const raw = typeof res?.response === "string" ? JSON.parse(res.response) : res?.response;
+            const info = raw?.response || raw || {};
+            resolve({
+              nickname: info.nickName || undefined,
+              avatar: info.avatar || undefined,
+              gender: info.gender === "m" ? 1 : info.gender === "f" ? 2 : undefined,
+              city: info.city || undefined,
+            });
+          } catch (e) {
+            resolve({});
+          }
+        },
+        fail: () => resolve({}),
+      });
+      return;
+    } catch (e) {
+      resolve({});
+      return;
+    }
+    // #endif
+    resolve({});
+  });
+}
+
 function afterThirdLogin(data: LoginPayload) {
   userStore.setLogin(data);
   if (!data.hasPhone) {
@@ -271,17 +336,25 @@ async function handleWxLogin() {
   if (thirdLogging.value) return;
   thirdLogging.value = true;
   try {
+    // 资料授权须在点击手势内先发起，拿到什么传什么（拒绝授权不阻断登录）
+    const profile = await wxUserProfile();
     let code = await uniLoginCode("weixin");
     // #ifdef H5
     // H5 无小程序环境：回退 mock code（后端未配置 appid 时 code 即 openid）
     if (!code) code = "h5-mock-wx";
+    if (!profile.nickname) {
+      profile.nickname = "微信体验用户";
+      profile.avatar = "/static/avatar/wx-mock.png";
+      profile.gender = 1;
+      profile.city = "深圳市";
+    }
     // #endif
     if (!code) {
       // 真机小程序环境拿不到 code 说明微信登录异常，不能用 mock 冒充
       uni.showToast({ title: "微信登录失败", icon: "none" });
       return;
     }
-    afterThirdLogin(await apiWxLogin(code, client.value));
+    afterThirdLogin(await apiWxLogin(code, client.value, profile));
   } catch (e) {
     /* 错误提示已由 request 统一处理 */
   } finally {
@@ -293,15 +366,22 @@ async function handleAlipayLogin() {
   if (thirdLogging.value) return;
   thirdLogging.value = true;
   try {
+    const profile = await alipayUserProfile();
     let authCode = await uniLoginCode("alipay");
     // #ifdef H5
     if (!authCode) authCode = "h5-mock-alipay";
+    if (!profile.nickname) {
+      profile.nickname = "支付宝体验用户";
+      profile.avatar = "/static/avatar/alipay-mock.png";
+      profile.gender = 1;
+      profile.city = "杭州市";
+    }
     // #endif
     if (!authCode) {
       uni.showToast({ title: "支付宝登录失败", icon: "none" });
       return;
     }
-    afterThirdLogin(await apiAlipayLogin(authCode, client.value));
+    afterThirdLogin(await apiAlipayLogin(authCode, client.value, profile));
   } catch (e) {
     /* 错误提示已由 request 统一处理 */
   } finally {

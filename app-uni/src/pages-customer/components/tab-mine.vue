@@ -2,7 +2,8 @@
   <view class="mine">
     <view class="mine__header">
       <view class="mine__avatar">
-        <wd-icon name="user-avatar" size="72rpx" color="#07c160" />
+        <image v-if="userStore.avatar" :src="userStore.avatar" class="mine__avatar-img" mode="aspectFill" />
+        <wd-icon v-else name="user-avatar" size="72rpx" color="#07c160" />
       </view>
       <view class="mine__info">
         <view class="mine__name">{{ userStore.nickname || "回收用户" }}</view>
@@ -252,6 +253,12 @@ defineExpose({ refresh });
     align-items: center;
     justify-content: center;
     box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+  }
+
+  &__avatar-img {
+    width: 128rpx;
+    height: 128rpx;
   }
 
   &__name {

@@ -40,6 +40,12 @@ public class OrderVO {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
     private LocalDateTime paidAt;
 
+    /** 打款单号（详情返回，C 端凭此对账/模拟回调） */
+    private String payoutNo;
+
+    /** 打款失败原因（payoutStatus=FAILED 时详情返回） */
+    private String payoutFailReason;
+
     /** 微信商家转账用户确认收款 package 信息（详情返回） */
     private String packageInfo;
 

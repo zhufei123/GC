@@ -70,9 +70,13 @@ public class AppUserService {
         vo.setPhone(user.getPhone());
         vo.setNickname(user.getNickname());
         vo.setAvatar(user.getAvatar());
+        vo.setGender(user.getGender());
+        vo.setCity(user.getCity());
         vo.setRole(user.getRole());
         vo.setRecyclerStatus(user.getRecyclerStatus());
         vo.setHasPhone(StringUtils.hasText(user.getPhone()));
+        vo.setHasWx(StringUtils.hasText(user.getOpenidWx()));
+        vo.setHasAlipay(StringUtils.hasText(user.getOpenidAlipay()));
         if ("recycler".equals(user.getRole())) {
             RecycleStation station = stationMapper.selectOne(
                     new LambdaQueryWrapper<RecycleStation>().eq(RecycleStation::getOwnerUserId, user.getId()));
@@ -96,6 +100,21 @@ public class AppUserService {
             user.setAvatar(dto.getAvatar());
         }
         userMapper.updateById(user);
+    }
+
+    /** 客户端上报订阅消息授权（requestSubscribeMessage 至少接受一个模板即上报），用于运营侧筛选可推送用户 */
+    public void markSubscribed(Long userId, String channel) {
+        if (!StringUtils.hasText(channel)
+                || (!"wx".equalsIgnoreCase(channel) && !"alipay".equalsIgnoreCase(channel))) {
+            throw new BizException(ErrorCode.PARAM_ERROR, "channel 只能是 wx 或 alipay");
+        }
+        LambdaUpdateWrapper<User> update = new LambdaUpdateWrapper<User>().eq(User::getId, userId);
+        if ("alipay".equalsIgnoreCase(channel)) {
+            update.set(User::getSubscribeAlipay, 1);
+        } else {
+            update.set(User::getSubscribeWx, 1);
+        }
+        userMapper.update(null, update);
     }
 
     /** 钱包：余额 + 最近流水 */
