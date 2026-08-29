@@ -232,7 +232,7 @@ const locationStore = useLocationStore();
 const cityPickerVisible = ref(false);
 const cityLoading = ref(false);
 const provinces = ref<RegionProvince[]>([]);
-const activeProvince = ref("广东省");
+const activeProvince = ref("北京市");
 const cityKeyword = ref("");
 
 const HOT_NAMES = ["北京市", "上海市", "广州市", "深圳市", "杭州市", "成都市"];
