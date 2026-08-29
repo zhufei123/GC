@@ -19,14 +19,23 @@ spring:
 app:
   wx:
     # 小程序登录（appid+secret 同时非空才走真实 jscode2session，否则 code 即 openid）
+    # https://developers.weixin.qq.com/miniprogram/dev/OpenApiDoc/user-login/code2Session.html
     appid: ""
     secret: ""
-    # 商家转账（mock=false 时需 mch-id + api-v3-key + mch-serial-no）
+    # 商家转账（mock=false 时需 mch-id + api-v3-key + mch-serial-no + transfer-scene-id + appid）
+    # https://pay.weixin.qq.com/doc/v3/merchant/4012716434
     mch-id: ""
     api-v3-key: ""
     mch-serial-no: ""
     private-key-pem: ""
     notify-url: ""
+    # 订阅消息官方必填 miniprogram_state / lang；page 建议订单详情
+    # https://developers.weixin.qq.com/miniprogram/dev/OpenApiDoc/mp-message-management/subscribe-message/sendMessage.html
+    miniprogram-state: formal
+    lang: zh_CN
+    subscribe-page: pages-customer/order/detail
+    transfer-scene-id: ""
+    user-recv-perception: 回收货款
     # mock=true：微信打款落 WAIT_USER_CONFIRM，等 C 端确认收款，不发起外部 HTTP
     mock: true
     subscribe-templates:
@@ -34,11 +43,19 @@ app:
       ORDER_WEIGHED: ""
       ORDER_COMPLETED: ""
   alipay:
+    # https://opendocs.alipay.com/mini/84bc7352_alipay.system.oauth.token
+    # https://opendocs.alipay.com/mini/6430ce5a_alipay.open.app.mini.templatemessage.send
     app-id: ""
     private-key: ""
     alipay-public-key: ""
     gateway: https://openapi.alipay.com/gateway.do
     encrypt-key: ""
+    sign-type: RSA2
+    charset: utf-8
+    message-page: pages-customer/order/detail
+    transfer-product-code: TRANS_ACCOUNT_NO_PWD
+    transfer-identity-type: ALIPAY_OPEN_ID
+    notify-url: ""
     # mock=true：支付宝打款进程内直接成功
     mock: true
     message-templates:

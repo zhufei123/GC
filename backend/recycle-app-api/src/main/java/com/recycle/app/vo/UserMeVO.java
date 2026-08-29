@@ -12,6 +12,9 @@ public class UserMeVO {
     /** 0未知 1男 2女 */
     private Integer gender;
     private String city;
+    private String province;
+    private String country;
+    private String language;
     private String role;
     private String recyclerStatus;
     private Boolean hasPhone;

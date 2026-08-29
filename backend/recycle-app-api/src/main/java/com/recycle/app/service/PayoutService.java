@@ -87,7 +87,20 @@ public class PayoutService {
                         throw new BizException(ErrorCode.PARAM_ERROR, "用户未绑定微信");
                     }
                 }
+                String wxAppid = firstText(user.getWxAppid(), wxProps.getAppid(), wxProps.isMock() ? "mock" : null);
+                if (!wxProps.isMock()) {
+                    if (!StringUtils.hasText(wxAppid)) {
+                        throw new BizException(ErrorCode.PARAM_ERROR, "未配置微信小程序 appid，无法商家转账");
+                    }
+                    if (StringUtils.hasText(user.getWxAppid()) && !user.getWxAppid().equals(wxProps.getAppid())) {
+                        throw new BizException(ErrorCode.PARAM_ERROR, "用户微信 openid 与当前小程序 appid 不一致");
+                    }
+                    if (!StringUtils.hasText(wxProps.getTransferSceneId())) {
+                        throw new BizException(ErrorCode.PARAM_ERROR, "未配置 transfer-scene-id，无法商家转账");
+                    }
+                }
                 payout.setOpenid(wxOpenid);
+                payout.setAppid(wxAppid);
                 if (wxProps.isMock()) {
                     // mock：停在 WAIT_USER_CONFIRM，等 C 端确认收款（H5 走 /pay/wx-confirm）
                     wxMock = true;
@@ -102,15 +115,17 @@ public class PayoutService {
                 }
             }
             case ALIPAY_TRANSFER -> {
-                String aliOpenid = user.getOpenidAlipay();
-                if (!StringUtils.hasText(aliOpenid)) {
+                String aliIdentity = firstText(user.getOpenidAlipay(), user.getAlipayUserId());
+                if (!StringUtils.hasText(aliIdentity)) {
                     if (alipayProps.isMock()) {
-                        aliOpenid = "mock-alipay-" + user.getId();
+                        aliIdentity = "mock-alipay-" + user.getId();
                     } else {
                         throw new BizException(ErrorCode.PARAM_ERROR, "用户未绑定支付宝");
                     }
                 }
-                payout.setOpenid(aliOpenid);
+                payout.setOpenid(aliIdentity);
+                payout.setAppid(firstText(user.getAlipayAppId(), alipayProps.getAppId(),
+                        alipayProps.isMock() ? "mock" : null));
                 if (alipayProps.isMock()) {
                     // 支付宝无用户确认环节，mock 直接成功
                     payout.setStatus("SUCCESS");
@@ -135,15 +150,24 @@ public class PayoutService {
 
         if (callWxChannel) {
             WxPayClient.TransferResult result = wxPayClient.transferToUser(
-                    payout.getPayoutNo(), payout.getOpenid(), payout.getAmount(), "回收订单打款");
+                    payout.getPayoutNo(), payout.getAppid(), payout.getOpenid(),
+                    wxProps.getTransferSceneId(), wxProps.getNotifyUrl(),
+                    payout.getAmount(), firstText(wxProps.getUserRecvPerception(), "回收订单打款"));
             payout.setStatus(result.status());
             payout.setChannelBillNo(result.channelBillNo());
             payout.setPackageInfo(result.packageInfo());
             payoutOrderMapper.updateById(payout);
         }
         if (callAlipayChannel) {
+            boolean useOpenId = StringUtils.hasText(user.getOpenidAlipay());
+            String identity = useOpenId ? user.getOpenidAlipay() : payout.getOpenid();
+            String identityType = useOpenId
+                    ? firstText(alipayProps.getTransferIdentityType(), "ALIPAY_OPEN_ID")
+                    : "ALIPAY_USER_ID";
             String billNo = alipayTransferClient.transferToUser(
-                    payout.getPayoutNo(), payout.getOpenid(), payout.getAmount(), "回收订单打款");
+                    payout.getPayoutNo(), identity, identityType,
+                    firstText(alipayProps.getTransferProductCode(), "TRANS_ACCOUNT_NO_PWD"),
+                    payout.getAmount(), "回收订单打款");
             payout.setStatus("SUCCESS");
             payout.setChannelBillNo(billNo);
             payoutOrderMapper.updateById(payout);
@@ -246,6 +270,18 @@ public class PayoutService {
             return value;
         }
         return value.substring(0, maxLen);
+    }
+
+    private static String firstText(String... values) {
+        if (values == null) {
+            return null;
+        }
+        for (String value : values) {
+            if (StringUtils.hasText(value)) {
+                return value;
+            }
+        }
+        return null;
     }
 
     /** PO + 时间戳 + 订单 id 后 4 位 + 随机 4 位，降低同秒碰撞概率 */

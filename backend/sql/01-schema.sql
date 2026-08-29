@@ -30,14 +30,25 @@ DROP TABLE IF EXISTS `user`;
 
 CREATE TABLE `user` (
   id            BIGINT PRIMARY KEY,
-  openid_wx     VARCHAR(64)  DEFAULT NULL,
+  openid_wx     VARCHAR(64)  DEFAULT NULL COMMENT '微信openid，绑定下方 wx_appid',
+  wx_appid      VARCHAR(32)  DEFAULT NULL COMMENT '微信小程序appid，openid所属应用',
   unionid_wx    VARCHAR(64)  DEFAULT NULL,
-  openid_alipay VARCHAR(64)  DEFAULT NULL,
+  wx_session_key VARCHAR(128) DEFAULT NULL COMMENT 'code2session会话密钥，仅服务端',
+  wx_session_at DATETIME     DEFAULT NULL,
+  openid_alipay VARCHAR(64)  DEFAULT NULL COMMENT '支付宝open_id（新商户推荐）',
+  alipay_app_id VARCHAR(32)  DEFAULT NULL COMMENT '支付宝小程序app_id',
+  alipay_user_id VARCHAR(32) DEFAULT NULL COMMENT '支付宝user_id，2088开头16位',
+  alipay_access_token VARCHAR(128) DEFAULT NULL,
+  alipay_refresh_token VARCHAR(128) DEFAULT NULL,
+  alipay_token_expire_at DATETIME DEFAULT NULL,
   phone         VARCHAR(20)  DEFAULT NULL,
   nickname      VARCHAR(64)  DEFAULT NULL,
   avatar        VARCHAR(512) DEFAULT NULL,
   gender        TINYINT      DEFAULT NULL COMMENT '0未知 1男 2女',
   city          VARCHAR(64)  DEFAULT NULL COMMENT '资料城市（授权时）',
+  province      VARCHAR(64)  DEFAULT NULL,
+  country       VARCHAR(64)  DEFAULT NULL,
+  language      VARCHAR(16)  DEFAULT NULL,
   subscribe_wx  TINYINT      NOT NULL DEFAULT 0 COMMENT '1=曾授权微信订阅消息',
   subscribe_alipay TINYINT   NOT NULL DEFAULT 0 COMMENT '1=曾授权支付宝订阅消息',
   role          VARCHAR(20)  NOT NULL DEFAULT 'customer' COMMENT 'customer/recycler',
@@ -49,7 +60,8 @@ CREATE TABLE `user` (
   deleted       TINYINT      NOT NULL DEFAULT 0,
   UNIQUE KEY uk_user_phone (phone),
   UNIQUE KEY uk_user_wx (openid_wx),
-  UNIQUE KEY uk_user_alipay (openid_alipay)
+  UNIQUE KEY uk_user_alipay (openid_alipay),
+  KEY idx_user_alipay_uid (alipay_user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='C/B端用户';
 
 CREATE TABLE user_address (
@@ -289,6 +301,7 @@ CREATE TABLE payout_order (
   channel         VARCHAR(24)   NOT NULL COMMENT 'OFFLINE/WX_TRANSFER/ALIPAY_TRANSFER/WALLET',
   amount          DECIMAL(12,2) NOT NULL,
   openid          VARCHAR(64)   DEFAULT NULL,
+  appid           VARCHAR(32)   DEFAULT NULL COMMENT '打款使用的小程序appid，须与openid同应用',
   status          VARCHAR(24)   NOT NULL COMMENT 'SUCCESS/PROCESSING/WAIT_USER_CONFIRM/FAILED',
   channel_bill_no VARCHAR(64)   DEFAULT NULL,
   package_info    VARCHAR(512)  DEFAULT NULL,

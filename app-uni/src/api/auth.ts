@@ -16,6 +16,9 @@ export interface ThirdLoginProfile {
   /** 0未知 1男 2女 */
   gender?: number;
   city?: string;
+  province?: string;
+  country?: string;
+  language?: string;
   phone?: string;
 }
 

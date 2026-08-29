@@ -24,6 +24,8 @@ public class PayoutOrder extends BaseEntity {
     private BigDecimal amount;
     /** 转账收款方 openid（WX/ALIPAY 渠道） */
     private String openid;
+    /** 打款使用的小程序 appid，须与 openid 同应用（微信商家转账必填） */
+    private String appid;
     /** SUCCESS/PROCESSING/WAIT_USER_CONFIRM/FAILED */
     private String status;
     private String channelBillNo;

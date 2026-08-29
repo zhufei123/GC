@@ -58,9 +58,15 @@ public class NotifyService {
             log.warn("[notify] skip wx push: userId={} templateKey={} 已配置模板但 user.openid_wx 为空（用户未微信登录/绑定）",
                     userId, templateKey);
         }
+        if (StringUtils.hasText(user.getWxAppid()) && StringUtils.hasText(wxProps.getAppid())
+                && !user.getWxAppid().equals(wxProps.getAppid()) && !"mock".equals(user.getWxAppid())) {
+            log.warn("[notify] wx appid mismatch: userId={} user.wxAppid={} configured.appid={}（openid 与 appid 必须同应用）",
+                    userId, user.getWxAppid(), wxProps.getAppid());
+        }
         if (StringUtils.hasText(user.getOpenidWx()) && StringUtils.hasText(wxTemplateId)) {
             try {
-                wxSubscribeClient.send(user.getOpenidWx(), wxTemplateId, null, templateData(title, content));
+                wxSubscribeClient.send(user.getOpenidWx(), wxTemplateId,
+                        wxProps.resolveSubscribePage(templateKey), templateData(title, content));
                 insertLog(userId, "WX", templateKey, title, content, bizType, bizId, "SENT", null);
             } catch (Exception e) {
                 log.warn("[notify] wx subscribe failed userId={} templateKey={}", userId, templateKey, e);
@@ -68,13 +74,16 @@ public class NotifyService {
             }
         }
         String alipayTemplateId = alipayProps.getMessageTemplates().get(templateKey);
-        if (StringUtils.hasText(alipayTemplateId) && !StringUtils.hasText(user.getOpenidAlipay())) {
-            log.warn("[notify] skip alipay push: userId={} templateKey={} 已配置模板但 user.openid_alipay 为空（用户未支付宝登录/绑定）",
+        if (StringUtils.hasText(alipayTemplateId)
+                && !StringUtils.hasText(user.getOpenidAlipay()) && !StringUtils.hasText(user.getAlipayUserId())) {
+            log.warn("[notify] skip alipay push: userId={} templateKey={} 已配置模板但 user 无 open_id/user_id",
                     userId, templateKey);
         }
-        if (StringUtils.hasText(user.getOpenidAlipay()) && StringUtils.hasText(alipayTemplateId)) {
+        if ((StringUtils.hasText(user.getOpenidAlipay()) || StringUtils.hasText(user.getAlipayUserId()))
+                && StringUtils.hasText(alipayTemplateId)) {
             try {
-                alipayMessageClient.send(user.getOpenidAlipay(), alipayTemplateId, null, templateData(title, content));
+                alipayMessageClient.send(user.getAlipayUserId(), user.getOpenidAlipay(), alipayTemplateId,
+                        alipayProps.resolveMessagePage(templateKey), templateData(title, content));
                 insertLog(userId, "ALIPAY", templateKey, title, content, bizType, bizId, "SENT", null);
             } catch (Exception e) {
                 log.warn("[notify] alipay message failed userId={} templateKey={}", userId, templateKey, e);

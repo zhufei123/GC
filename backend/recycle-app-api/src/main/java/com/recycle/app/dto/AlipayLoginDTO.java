@@ -28,6 +28,10 @@ public class AlipayLoginDTO {
     @Size(max = 64, message = "城市名过长")
     private String city;
 
+    /** getOpenUserInfo.province */
+    @Size(max = 64, message = "省份名过长")
+    private String province;
+
     /** 已废弃：登录接口不落库手机号，避免客户端伪造。请走 bind-phone / bind-phone-alipay */
     @Size(max = 20, message = "手机号过长")
     private String phone;

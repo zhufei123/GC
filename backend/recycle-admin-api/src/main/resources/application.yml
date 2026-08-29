@@ -77,6 +77,40 @@ app:
     bucket: recycle-mock-1250000000
     region: ap-guangzhou
     cdn-host: https://cdn.example.com
+  # 微信小程序：appid 必须与 openid / 商家转账 / 订阅消息同应用
+  # https://developers.weixin.qq.com/miniprogram/dev/OpenApiDoc/user-login/code2Session.html
+  # https://developers.weixin.qq.com/miniprogram/dev/OpenApiDoc/mp-message-management/subscribe-message/sendMessage.html
+  # https://pay.weixin.qq.com/doc/v3/merchant/4012716434
+  wx:
+    appid: ""
+    secret: ""
+    mch-id: ""
+    api-v3-key: ""
+    mch-serial-no: ""
+    private-key-pem: ""
+    notify-url: ""
+    miniprogram-state: formal
+    lang: zh_CN
+    subscribe-page: pages-customer/order/detail
+    transfer-scene-id: ""
+    user-recv-perception: 回收货款
+    mock: true
+  # 支付宝小程序：app_id 必须与 oauth / 模板消息 / 转账同应用
+  # https://opendocs.alipay.com/mini/84bc7352_alipay.system.oauth.token
+  # https://opendocs.alipay.com/mini/6430ce5a_alipay.open.app.mini.templatemessage.send
+  alipay:
+    app-id: ""
+    private-key: ""
+    alipay-public-key: ""
+    gateway: https://openapi.alipay.com/gateway.do
+    encrypt-key: ""
+    sign-type: RSA2
+    charset: utf-8
+    message-page: pages-customer/order/detail
+    transfer-product-code: TRANS_ACCOUNT_NO_PWD
+    transfer-identity-type: ALIPAY_OPEN_ID
+    notify-url: ""
+    mock: true
 
 logging:
   level:

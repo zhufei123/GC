@@ -28,6 +28,18 @@ public class WxLoginDTO {
     @Size(max = 64, message = "城市名过长")
     private String city;
 
+    /** getUserProfile.province */
+    @Size(max = 64, message = "省份名过长")
+    private String province;
+
+    /** getUserProfile.country */
+    @Size(max = 64, message = "国家名过长")
+    private String country;
+
+    /** getUserProfile.language，如 zh_CN */
+    @Size(max = 16, message = "语言标识过长")
+    private String language;
+
     /** 已废弃：登录接口不落库手机号，避免客户端伪造。请走 bind-phone / bind-phone-wx */
     @Size(max = 20, message = "手机号过长")
     private String phone;

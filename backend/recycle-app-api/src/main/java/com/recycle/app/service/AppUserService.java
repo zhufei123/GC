@@ -72,6 +72,9 @@ public class AppUserService {
         vo.setAvatar(user.getAvatar());
         vo.setGender(user.getGender());
         vo.setCity(user.getCity());
+        vo.setProvince(user.getProvince());
+        vo.setCountry(user.getCountry());
+        vo.setLanguage(user.getLanguage());
         vo.setRole(user.getRole());
         vo.setRecyclerStatus(user.getRecyclerStatus());
         vo.setHasPhone(StringUtils.hasText(user.getPhone()));

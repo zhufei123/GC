@@ -63,6 +63,7 @@
         "requiredPrivateInfos" : [ "getLocation", "chooseLocation" ]
     },
     "mp-alipay" : {
+        "appid" : "",
         "usingComponents" : true,
         "component2" : true
     },

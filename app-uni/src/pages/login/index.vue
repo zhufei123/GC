@@ -276,6 +276,9 @@ function wxUserProfile(): Promise<ThirdLoginProfile> {
             avatar: info.avatarUrl || undefined,
             gender: info.gender > 0 ? info.gender : undefined,
             city: info.city || undefined,
+            province: info.province || undefined,
+            country: info.country || undefined,
+            language: info.language || undefined,
           });
         },
         fail: () => resolve({}),
@@ -305,6 +308,7 @@ function alipayUserProfile(): Promise<ThirdLoginProfile> {
               avatar: info.avatar || undefined,
               gender: info.gender === "m" ? 1 : info.gender === "f" ? 2 : undefined,
               city: info.city || undefined,
+              province: info.province || undefined,
             });
           } catch (e) {
             resolve({});
@@ -347,6 +351,9 @@ async function handleWxLogin() {
       profile.avatar = "/static/avatar/wx-mock.png";
       profile.gender = 1;
       profile.city = "深圳市";
+      profile.province = "广东省";
+      profile.country = "中国";
+      profile.language = "zh_CN";
     }
     // #endif
     if (!code) {
@@ -375,6 +382,7 @@ async function handleAlipayLogin() {
       profile.avatar = "/static/avatar/alipay-mock.png";
       profile.gender = 1;
       profile.city = "杭州市";
+      profile.province = "浙江省";
     }
     // #endif
     if (!authCode) {

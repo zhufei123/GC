@@ -37,6 +37,7 @@ import javax.crypto.spec.SecretKeySpec;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.Map;
 
@@ -99,17 +100,20 @@ public class AppAuthService {
     public AppLoginVO wxLogin(WxLoginDTO dto) {
         String openid;
         String unionid = null;
+        String sessionKey = null;
         if (wxProps.loginConfigured()) {
             if (H5_MOCK_WX_CODE.equals(dto.getCode())) {
                 throw new BizException(ErrorCode.PARAM_ERROR, "已配置微信登录，禁止 mock code");
             }
             Map<String, Object> session = jscode2session(dto.getCode());
-            openid = (String) session.get("openid");
-            unionid = (String) session.get("unionid");
+            openid = str(session.get("openid"));
+            unionid = str(session.get("unionid"));
+            sessionKey = str(session.get("session_key"));
         } else {
             // 未配置 appid+secret：mock 模式，code 即 openid（H5 联调）
             openid = dto.getCode();
         }
+        String wxAppid = resolveWxAppid();
         boolean boss = "boss".equalsIgnoreCase(dto.getClient());
         User user = userMapper.selectOne(new LambdaQueryWrapper<User>().eq(User::getOpenidWx, openid));
         boolean isNew = false;
@@ -119,22 +123,22 @@ public class AppAuthService {
             }
             user = new User();
             user.setOpenidWx(openid);
+            user.setWxAppid(wxAppid);
             user.setUnionidWx(unionid);
+            applyWxSession(user, sessionKey);
             user.setNickname("微信用户" + openid.substring(Math.max(0, openid.length() - 4)));
             user.setRole("customer");
             user.setStatus(1);
             user.setBalance(BigDecimal.ZERO);
             user.setRecyclerStatus("none");
-            applyClientProfile(user, dto.getNickname(), dto.getAvatar(), dto.getGender(), dto.getCity());
+            applyClientProfile(user, dto.getNickname(), dto.getAvatar(), dto.getGender(),
+                    dto.getCity(), dto.getProvince(), dto.getCountry(), dto.getLanguage());
             userMapper.insert(user);
             isNew = true;
         } else {
-            boolean changed = false;
-            if (StringUtils.hasText(unionid) && !unionid.equals(user.getUnionidWx())) {
-                user.setUnionidWx(unionid);
-                changed = true;
-            }
-            changed |= applyClientProfile(user, dto.getNickname(), dto.getAvatar(), dto.getGender(), dto.getCity());
+            boolean changed = applyWxIdentity(user, wxAppid, unionid, sessionKey);
+            changed |= applyClientProfile(user, dto.getNickname(), dto.getAvatar(), dto.getGender(),
+                    dto.getCity(), dto.getProvince(), dto.getCountry(), dto.getLanguage());
             if (changed) {
                 userMapper.updateById(user);
             }
@@ -150,7 +154,8 @@ public class AppAuthService {
      * 客户端携带的可选资料落库：只以非空值更新，空值不覆盖已有资料。
      * 手机号不在登录接口写入（可被伪造）；正式号码走 bind-phone / bind-phone-wx / bind-phone-alipay。
      */
-    private boolean applyClientProfile(User user, String nickname, String avatar, Integer gender, String city) {
+    private boolean applyClientProfile(User user, String nickname, String avatar, Integer gender,
+                                       String city, String province, String country, String language) {
         boolean changed = false;
         if (StringUtils.hasText(nickname) && !nickname.equals(user.getNickname())) {
             user.setNickname(nickname);
@@ -168,7 +173,48 @@ public class AppAuthService {
             user.setCity(city);
             changed = true;
         }
+        if (StringUtils.hasText(province) && !province.equals(user.getProvince())) {
+            user.setProvince(province);
+            changed = true;
+        }
+        if (StringUtils.hasText(country) && !country.equals(user.getCountry())) {
+            user.setCountry(country);
+            changed = true;
+        }
+        if (StringUtils.hasText(language) && !language.equals(user.getLanguage())) {
+            user.setLanguage(language);
+            changed = true;
+        }
         return changed;
+    }
+
+    /** 颁发 openid 的小程序 appid；未配置官方密钥时记 mock，避免真实接口缺 appid */
+    private String resolveWxAppid() {
+        return StringUtils.hasText(wxProps.getAppid()) ? wxProps.getAppid() : "mock";
+    }
+
+    private boolean applyWxIdentity(User user, String wxAppid, String unionid, String sessionKey) {
+        boolean changed = false;
+        if (StringUtils.hasText(wxAppid) && !wxAppid.equals(user.getWxAppid())) {
+            user.setWxAppid(wxAppid);
+            changed = true;
+        }
+        if (StringUtils.hasText(unionid) && !unionid.equals(user.getUnionidWx())) {
+            user.setUnionidWx(unionid);
+            changed = true;
+        }
+        changed |= applyWxSession(user, sessionKey);
+        return changed;
+    }
+
+    /** session_key 仅服务端保存，禁止写入 AppLoginVO / UserMeVO */
+    private boolean applyWxSession(User user, String sessionKey) {
+        if (!StringUtils.hasText(sessionKey) || sessionKey.equals(user.getWxSessionKey())) {
+            return false;
+        }
+        user.setWxSessionKey(sessionKey);
+        user.setWxSessionAt(LocalDateTime.now());
+        return true;
     }
 
     /** 小程序 jscode2session 换 openid/unionid */
@@ -195,41 +241,136 @@ public class AppAuthService {
     }
 
     public AppLoginVO alipayLogin(AlipayLoginDTO dto) {
-        String openid;
+        String userId = null;
+        String openId = null;
+        String accessToken = null;
+        String refreshToken = null;
+        Integer expiresIn = null;
         if (alipayProps.oauthConfigured()) {
             if (H5_MOCK_ALIPAY_CODE.equals(dto.getAuthCode())) {
                 throw new BizException(ErrorCode.PARAM_ERROR, "已配置支付宝登录，禁止 mock authCode");
             }
-            openid = alipayOauthClient.oauthToken(dto.getAuthCode());
+            AlipayOauthClient.OauthToken token = alipayOauthClient.oauthToken(dto.getAuthCode());
+            userId = token.userId();
+            openId = token.openId();
+            accessToken = token.accessToken();
+            refreshToken = token.refreshToken();
+            expiresIn = token.expiresIn();
         } else {
-            // 未配置 appId+私钥：mock 模式，authCode 即 openidAlipay（H5 联调）
-            openid = dto.getAuthCode();
+            // 未配置 appId+私钥：mock。2088+16 位视为 user_id，否则视为 open_id
+            String code = dto.getAuthCode();
+            if (looksLikeAlipayUserId(code)) {
+                userId = code;
+            } else {
+                openId = code;
+            }
         }
+        String alipayAppId = resolveAlipayAppId();
         boolean boss = "boss".equalsIgnoreCase(dto.getClient());
-        User user = userMapper.selectOne(new LambdaQueryWrapper<User>().eq(User::getOpenidAlipay, openid));
+        User user = findAlipayUser(openId, userId);
         boolean isNew = false;
         if (user == null) {
             if (boss) {
                 throw new BizException(ErrorCode.NOT_BOSS);
             }
             user = new User();
-            user.setOpenidAlipay(openid);
-            user.setNickname("支付宝用户" + openid.substring(Math.max(0, openid.length() - 4)));
+            applyAlipayIdentity(user, alipayAppId, openId, userId, accessToken, refreshToken, expiresIn);
+            String display = StringUtils.hasText(openId) ? openId : userId;
+            user.setNickname("支付宝用户" + display.substring(Math.max(0, display.length() - 4)));
             user.setRole("customer");
             user.setStatus(1);
             user.setBalance(BigDecimal.ZERO);
             user.setRecyclerStatus("none");
-            applyClientProfile(user, dto.getNickname(), dto.getAvatar(), dto.getGender(), dto.getCity());
+            applyClientProfile(user, dto.getNickname(), dto.getAvatar(), dto.getGender(),
+                    dto.getCity(), dto.getProvince(), null, null);
             userMapper.insert(user);
             isNew = true;
-        } else if (applyClientProfile(user, dto.getNickname(), dto.getAvatar(), dto.getGender(), dto.getCity())) {
-            userMapper.updateById(user);
+        } else {
+            boolean changed = applyAlipayIdentity(user, alipayAppId, openId, userId, accessToken, refreshToken, expiresIn);
+            changed |= applyClientProfile(user, dto.getNickname(), dto.getAvatar(), dto.getGender(),
+                    dto.getCity(), dto.getProvince(), null, null);
+            if (changed) {
+                userMapper.updateById(user);
+            }
         }
         AppLoginVO vo = loginAs(user, dto.getClient());
         if (!boss) {
             vo.setIsNewUser(isNew);
         }
         return vo;
+    }
+
+    /** 先 open_id，再 user_id，再兼容历史把 user_id 写入 openid_alipay 的记录 */
+    private User findAlipayUser(String openId, String userId) {
+        if (StringUtils.hasText(openId)) {
+            User byOpenId = userMapper.selectOne(new LambdaQueryWrapper<User>().eq(User::getOpenidAlipay, openId));
+            if (byOpenId != null) {
+                return byOpenId;
+            }
+        }
+        if (StringUtils.hasText(userId)) {
+            User byUserId = userMapper.selectOne(new LambdaQueryWrapper<User>().eq(User::getAlipayUserId, userId));
+            if (byUserId != null) {
+                return byUserId;
+            }
+            return userMapper.selectOne(new LambdaQueryWrapper<User>().eq(User::getOpenidAlipay, userId));
+        }
+        return null;
+    }
+
+    private String resolveAlipayAppId() {
+        return StringUtils.hasText(alipayProps.getAppId()) ? alipayProps.getAppId() : "mock";
+    }
+
+    /**
+     * openid_alipay 存 open_id（新商户推荐）；alipay_user_id 存 2088 uid。
+     * access_token / refresh_token 仅服务端，禁止下发前端。
+     */
+    private boolean applyAlipayIdentity(User user, String appId, String openId, String userId,
+                                        String accessToken, String refreshToken, Integer expiresIn) {
+        boolean changed = false;
+        if (StringUtils.hasText(appId) && !appId.equals(user.getAlipayAppId())) {
+            user.setAlipayAppId(appId);
+            changed = true;
+        }
+        String openidAlipay = StringUtils.hasText(openId) ? openId : userId;
+        if (StringUtils.hasText(openidAlipay) && !openidAlipay.equals(user.getOpenidAlipay())) {
+            user.setOpenidAlipay(openidAlipay);
+            changed = true;
+        }
+        if (StringUtils.hasText(userId) && !userId.equals(user.getAlipayUserId())) {
+            user.setAlipayUserId(userId);
+            changed = true;
+        }
+        if (StringUtils.hasText(accessToken) && !accessToken.equals(user.getAlipayAccessToken())) {
+            user.setAlipayAccessToken(accessToken);
+            changed = true;
+        }
+        if (StringUtils.hasText(refreshToken) && !refreshToken.equals(user.getAlipayRefreshToken())) {
+            user.setAlipayRefreshToken(refreshToken);
+            changed = true;
+        }
+        if (expiresIn != null && expiresIn > 0) {
+            LocalDateTime expireAt = LocalDateTime.now().plusSeconds(expiresIn);
+            if (user.getAlipayTokenExpireAt() == null || !expireAt.equals(user.getAlipayTokenExpireAt())) {
+                user.setAlipayTokenExpireAt(expireAt);
+                changed = true;
+            }
+        }
+        return changed;
+    }
+
+    /** 支付宝 user_id：2088 开头共 16 位数字 */
+    private static boolean looksLikeAlipayUserId(String value) {
+        return StringUtils.hasText(value) && value.matches("2088\\d{12}");
+    }
+
+    private static String str(Object value) {
+        if (value == null) {
+            return null;
+        }
+        String text = value.toString().trim();
+        return text.isEmpty() ? null : text;
     }
 
     /** 统一登录：boss 端要求 recycler 身份并返回 storeId，否则登 USER 端 */
@@ -334,23 +475,54 @@ public class AppAuthService {
                 && !existing.getOpenidAlipay().equals(current.getOpenidAlipay())) {
             throw new BizException(ErrorCode.PARAM_ERROR, "该手机号已绑定其他支付宝账号");
         }
-        // 先清空临时账号 openid（openid_wx/openid_alipay 唯一键），再挂到手机号账号
+        // 先清空临时账号身份字段（openid_wx/openid_alipay 唯一键），再挂到手机号账号
         userMapper.update(null, new LambdaUpdateWrapper<User>()
                 .eq(User::getId, current.getId())
                 .set(User::getOpenidWx, null)
+                .set(User::getWxAppid, null)
                 .set(User::getUnionidWx, null)
-                .set(User::getOpenidAlipay, null));
+                .set(User::getWxSessionKey, null)
+                .set(User::getWxSessionAt, null)
+                .set(User::getOpenidAlipay, null)
+                .set(User::getAlipayAppId, null)
+                .set(User::getAlipayUserId, null)
+                .set(User::getAlipayAccessToken, null)
+                .set(User::getAlipayRefreshToken, null)
+                .set(User::getAlipayTokenExpireAt, null));
         boolean changed = false;
         if (!StringUtils.hasText(existing.getOpenidWx()) && StringUtils.hasText(current.getOpenidWx())) {
             existing.setOpenidWx(current.getOpenidWx());
+            changed = true;
+        }
+        if (!StringUtils.hasText(existing.getWxAppid()) && StringUtils.hasText(current.getWxAppid())) {
+            existing.setWxAppid(current.getWxAppid());
             changed = true;
         }
         if (!StringUtils.hasText(existing.getUnionidWx()) && StringUtils.hasText(current.getUnionidWx())) {
             existing.setUnionidWx(current.getUnionidWx());
             changed = true;
         }
+        if (!StringUtils.hasText(existing.getWxSessionKey()) && StringUtils.hasText(current.getWxSessionKey())) {
+            existing.setWxSessionKey(current.getWxSessionKey());
+            existing.setWxSessionAt(current.getWxSessionAt());
+            changed = true;
+        }
         if (!StringUtils.hasText(existing.getOpenidAlipay()) && StringUtils.hasText(current.getOpenidAlipay())) {
             existing.setOpenidAlipay(current.getOpenidAlipay());
+            changed = true;
+        }
+        if (!StringUtils.hasText(existing.getAlipayAppId()) && StringUtils.hasText(current.getAlipayAppId())) {
+            existing.setAlipayAppId(current.getAlipayAppId());
+            changed = true;
+        }
+        if (!StringUtils.hasText(existing.getAlipayUserId()) && StringUtils.hasText(current.getAlipayUserId())) {
+            existing.setAlipayUserId(current.getAlipayUserId());
+            changed = true;
+        }
+        if (!StringUtils.hasText(existing.getAlipayAccessToken()) && StringUtils.hasText(current.getAlipayAccessToken())) {
+            existing.setAlipayAccessToken(current.getAlipayAccessToken());
+            existing.setAlipayRefreshToken(current.getAlipayRefreshToken());
+            existing.setAlipayTokenExpireAt(current.getAlipayTokenExpireAt());
             changed = true;
         }
         // 三方资料一并带到存活账号，消息身份（openid/头像等）不因合并丢失
@@ -369,6 +541,18 @@ public class AppAuthService {
         }
         if (!StringUtils.hasText(existing.getCity()) && StringUtils.hasText(current.getCity())) {
             existing.setCity(current.getCity());
+            changed = true;
+        }
+        if (!StringUtils.hasText(existing.getProvince()) && StringUtils.hasText(current.getProvince())) {
+            existing.setProvince(current.getProvince());
+            changed = true;
+        }
+        if (!StringUtils.hasText(existing.getCountry()) && StringUtils.hasText(current.getCountry())) {
+            existing.setCountry(current.getCountry());
+            changed = true;
+        }
+        if (!StringUtils.hasText(existing.getLanguage()) && StringUtils.hasText(current.getLanguage())) {
+            existing.setLanguage(current.getLanguage());
             changed = true;
         }
         if (Integer.valueOf(1).equals(current.getSubscribeWx()) && !Integer.valueOf(1).equals(existing.getSubscribeWx())) {
